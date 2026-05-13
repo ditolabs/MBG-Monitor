@@ -444,43 +444,9 @@ footer { border-top:1px solid var(--border); padding:16px 28px; display:flex; ju
 
 <div class="toast-container" id="toastContainer"></div>
 
+<script src="data.js"></script>
 
 <script>
-// Fungsi Pintar: Cari koordinat otomatis (Auto-Geocoding)
-async function getCoordinates(cityName) {
-    // 1. Cek dulu di data.js manual kita
-    if (GEO_COORDS[cityName]) return GEO_COORDS[cityName];
-
-    // 2. Jika tidak ada, tanya ke OpenStreetMap (Nominatim)
-    try {
-        console.log(`Mencari koordinat otomatis untuk: ${cityName}...`);
-        const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${cityName},Indonesia`);
-        const data = await response.json();
-        
-        if (data && data.length > 0) {
-            const lat = parseFloat(data[0].lat);
-            const lon = parseFloat(data[0].lon);
-            // Simpan ke memory agar tidak tanya-tanya terus
-            GEO_COORDS[cityName] = [lat, lon];
-            return [lat, lon];
-        }
-    } catch (error) {
-        console.error("Gagal Geocoding:", error);
-    }
-    return [-7.2504, 112.7688]; // Default ke Surabaya jika gagal total
-}
-
-// Saat render peta, gunakan fungsi async di atas
-async function renderMap() {
-    for (let caseData of CASES) {
-        const coords = await getCoordinates(caseData.kabupaten);
-        // Tambahkan marker ke peta seperti biasa menggunakan 'coords'
-        L.circle(coords, { color: 'red', radius: 5000 }).addTo(map);
-    }
-}
-</script>
-
-
 // ─── STATE ────────────────────────────────────────────────────────────────
 let currentView = 'card';
 let sortField = 'tanggal';
@@ -644,37 +610,20 @@ function exportCSV() {
     return;
   }
   
-  // Headers
   const headers = ['Tanggal', 'Provinsi', 'Kabupaten/Kota', 'Kecamatan', 'Kelurahan/Desa', 'Lokasi', 'Total Korban', 'Rawat Inap', 'Gejala', 'Sumber', 'Status KLB'];
-  
-  // Format Rows
   const rows = filteredData.map(c => [
-    c.tanggal,
-    `"${c.provinsi}"`,
-    `"${c.kabupaten}"`,
-    `"${c.kecamatan}"`,
-    `"${c.kelurahan}"`,
-    `"${c.lokasi}"`,
-    c.korban,
-    c.rawatInap,
-    `"${c.gejala}"`,
-    `"${c.sumber}"`,
-    c.isKLB ? 'Ya' : 'Tidak'
+    c.tanggal, `"${c.provinsi}"`, `"${c.kabupaten}"`, `"${c.kecamatan}"`, `"${c.kelurahan}"`, `"${c.lokasi}"`,
+    c.korban, c.rawatInap, `"${c.gejala}"`, `"${c.sumber}"`, c.isKLB ? 'Ya' : 'Tidak'
   ]);
   
-  const csvContent = "data:text/csv;charset=utf-8," 
-    + headers.join(",") + "\n" 
-    + rows.map(e => e.join(",")).join("\n");
-  
+  const csvContent = "data:text/csv;charset=utf-8," + headers.join(",") + "\n" + rows.map(e => e.join(",")).join("\n");
   const encodedUri = encodeURI(csvContent);
   const link = document.createElement("a");
   link.setAttribute("href", encodedUri);
   link.setAttribute("download", `mbg_monitor_data_${new Date().toISOString().split('T')[0]}.csv`);
-  
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
-  
   showToast('success', 'Berhasil', 'File CSV sedang diunduh ke perangkat Anda.');
 }
 
@@ -704,15 +653,12 @@ function fmtDate(d) {
 
 function render() {
   const out = document.getElementById('casesOutput');
-  
-  // Update Widget Ekstra
   renderMap();
   renderChart();
   renderLeaderboard();
 
-  // Render List/Table
   if (filteredData.length === 0) {
-    out.innerHTML = `<div class="empty-state"><div class="icon">🔍</div><p>Tidak ada kasus yang cocok dengan filter ini.<br>Coba ubah kriteria pencarian.</p></div>`;
+    out.innerHTML = `<div class="empty-state"><div class="icon">🔍</div><p>Belum ada kasus yang tercatat di database.</p></div>`;
     return;
   }
 
@@ -725,18 +671,13 @@ function render() {
 
 function renderLeaderboard() {
   const out = document.getElementById('leaderboardOutput');
-  
-  // Agregasi jumlah korban per provinsi
   const provCount = {};
   filteredData.forEach(c => {
     if (!provCount[c.provinsi]) provCount[c.provinsi] = 0;
     provCount[c.provinsi] += c.korban;
   });
 
-  // Urutkan dari yang terbesar, ambil 5 teratas
-  const sortedProv = Object.entries(provCount)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 5);
+  const sortedProv = Object.entries(provCount).sort((a, b) => b[1] - a[1]).slice(0, 5);
 
   if (sortedProv.length === 0) {
     out.innerHTML = '<div style="color:var(--muted); font-size:11px; font-style:italic;">Data tidak tersedia.</div>';
@@ -756,8 +697,6 @@ function renderLeaderboard() {
 
 function renderChart() {
   const ctx = document.getElementById('trendChart').getContext('2d');
-  
-  // Agregasi jumlah korban per Bulan-Tahun
   const monthlyData = {};
   filteredData.forEach(c => {
     const monthKey = c.tanggal.substring(0, 7);
@@ -765,16 +704,12 @@ function renderChart() {
     monthlyData[monthKey] += c.korban;
   });
 
-  // Urutkan kunci bulan secara kronologis
   const sortedMonths = Object.keys(monthlyData).sort();
-  
-  // Ubah format label bulan
   const labels = sortedMonths.map(m => {
     const [year, month] = m.split('-');
     const monthNames = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
     return `${monthNames[parseInt(month)-1]} ${year}`;
   });
-  
   const dataValues = sortedMonths.map(m => monthlyData[m]);
 
   if (chartInstance) {
@@ -787,49 +722,25 @@ function renderChart() {
       data: {
         labels: labels,
         datasets: [{
-          label: 'Total Korban',
-          data: dataValues,
-          borderColor: '#e3000f', 
-          backgroundColor: 'rgba(227, 0, 15, 0.15)', 
-          borderWidth: 2,
-          pointBackgroundColor: '#1a1a1f',
-          pointBorderColor: '#e3000f',
-          pointBorderWidth: 2,
-          pointRadius: 4,
-          pointHoverRadius: 6,
-          fill: true,
-          tension: 0.3
+          label: 'Total Korban', data: dataValues, borderColor: '#e3000f', 
+          backgroundColor: 'rgba(227, 0, 15, 0.15)', borderWidth: 2,
+          pointBackgroundColor: '#1a1a1f', pointBorderColor: '#e3000f',
+          pointBorderWidth: 2, pointRadius: 4, pointHoverRadius: 6, fill: true, tension: 0.3
         }]
       },
       options: {
-        responsive: true,
-        maintainAspectRatio: false,
+        responsive: true, maintainAspectRatio: false,
         plugins: {
           legend: { display: false },
           tooltip: {
-            backgroundColor: '#1a1a1f',
-            titleColor: '#fff',
-            bodyColor: '#e8e8ec',
-            borderColor: '#363640',
-            borderWidth: 1,
-            displayColors: false,
-            callbacks: {
-              label: function(context) {
-                return context.parsed.y.toLocaleString('id-ID') + ' korban';
-              }
-            }
+            backgroundColor: '#1a1a1f', titleColor: '#fff', bodyColor: '#e8e8ec',
+            borderColor: '#363640', borderWidth: 1, displayColors: false,
+            callbacks: { label: function(context) { return context.parsed.y.toLocaleString('id-ID') + ' korban'; } }
           }
         },
         scales: {
-          y: { 
-            beginAtZero: true, 
-            grid: { color: '#2a2a32', drawBorder: false }, 
-            ticks: { color: '#6b6b7b', font: { family: "'IBM Plex Mono', monospace", size: 10 } } 
-          },
-          x: { 
-            grid: { display: false }, 
-            ticks: { color: '#6b6b7b', font: { family: "'IBM Plex Mono', monospace", size: 10 } } 
-          }
+          y: { beginAtZero: true, grid: { color: '#2a2a32', drawBorder: false }, ticks: { color: '#6b6b7b', font: { family: "'IBM Plex Mono', monospace", size: 10 } } },
+          x: { grid: { display: false }, ticks: { color: '#6b6b7b', font: { family: "'IBM Plex Mono', monospace", size: 10 } } }
         }
       }
     });
@@ -841,18 +752,12 @@ function renderCards(out) {
     <div class="case-card ${c.isNew ? 'new-case' : ''}" onclick="openNews('${c.kabupaten}', '${c.lokasi}', '${c.tanggal}')" title="Klik untuk cari berita kasus ini di Google">
       <div class="card-top">
         <div class="card-date">${fmtDate(c.tanggal)}</div>
-        <div>
-          ${c.isNew ? '<span class="badge badge-new">Baru</span>' : ''}
-          ${c.isKLB ? '<span class="badge badge-klb">KLB</span>' : ''}
-        </div>
+        <div>${c.isNew ? '<span class="badge badge-new">Baru</span>' : ''}${c.isKLB ? '<span class="badge badge-klb">KLB</span>' : ''}</div>
       </div>
       <div class="card-lokasi">${c.lokasi}</div>
       <div class="card-geo">
-        <span>${c.provinsi}</span>
-        <span class="geo-sep">›</span>
-        <span>${c.kabupaten}</span>
+        <span>${c.provinsi}</span><span class="geo-sep">›</span><span>${c.kabupaten}</span>
         ${c.kecamatan !== '-' ? `<span class="geo-sep">›</span><span>${c.kecamatan}</span>` : ''}
-        ${c.kelurahan !== '-' ? `<span class="geo-sep">›</span><span>${c.kelurahan}</span>` : ''}
       </div>
       <div class="card-gejala">${c.gejala}</div>
       <div class="card-bottom">
@@ -867,244 +772,59 @@ function renderCards(out) {
 
 function renderTable(out) {
   const cols = [
-    { field:'tanggal', label:'Tanggal' },
-    { field:'provinsi', label:'Provinsi' },
-    { field:'kabupaten', label:'Kabupaten' },
-    { field:'kecamatan', label:'Kecamatan' },
-    { field:'kelurahan', label:'Kelurahan' },
-    { field:'lokasi', label:'Lokasi' },
-    { field:'korban', label:'Korban' },
-    { field:'gejala', label:'Gejala' },
-    { field:'sumber', label:'Sumber' },
+    { field:'tanggal', label:'Tanggal' }, { field:'provinsi', label:'Provinsi' },
+    { field:'kabupaten', label:'Kabupaten' }, { field:'lokasi', label:'Lokasi' },
+    { field:'korban', label:'Korban' }, { field:'sumber', label:'Sumber' },
   ];
   out.innerHTML = `<div style="overflow-x:auto"><table class="cases-table">
-    <thead><tr>${cols.map(c => `
-      <th onclick="setSort('${c.field}')" class="${sortField===c.field?'sorted':''}">
-        ${c.label} <span class="sort-icon">${sortField===c.field?(sortDir===1?'↑':'↓'):'↕'}</span>
-      </th>`).join('')}</tr></thead>
+    <thead><tr>${cols.map(c => `<th onclick="setSort('${c.field}')" class="${sortField===c.field?'sorted':''}">${c.label} <span class="sort-icon">${sortField===c.field?(sortDir===1?'↑':'↓'):'↕'}</span></th>`).join('')}</tr></thead>
     <tbody>${filteredData.map(c => `
-      <tr onclick="openNews('${c.kabupaten}', '${c.lokasi}', '${c.tanggal}')" title="Klik untuk mencari berita kasus ini di Google">
-        <td class="td-date">${fmtDate(c.tanggal)}</td>
-        <td>${c.provinsi}</td>
-        <td class="td-geo">${c.kabupaten}</td>
-        <td class="td-geo">${c.kecamatan}</td>
-        <td class="td-geo">${c.kelurahan}</td>
-        <td>
-          ${c.isNew ? '<span class="badge badge-new" style="margin-right:5px">Baru</span>' : ''}
-          ${c.isKLB ? '<span class="badge badge-klb" style="margin-right:5px">KLB</span>' : ''}
-          ${c.lokasi}
-        </td>
-        <td class="td-korban">${c.korban.toLocaleString('id-ID')}</td>
-        <td style="max-width:200px;font-size:12px;color:var(--muted)">${c.gejala}</td>
-        <td style="font-size:11px;color:var(--muted2)">${c.sumber}</td>
+      <tr onclick="openNews('${c.kabupaten}', '${c.lokasi}', '${c.tanggal}')">
+        <td class="td-date">${fmtDate(c.tanggal)}</td><td>${c.provinsi}</td><td class="td-geo">${c.kabupaten}</td>
+        <td>${c.isNew ? '<span class="badge badge-new" style="margin-right:5px">Baru</span>' : ''}${c.lokasi}</td>
+        <td class="td-korban">${c.korban.toLocaleString('id-ID')}</td><td style="font-size:11px;color:var(--muted2)">${c.sumber}</td>
       </tr>`).join('')}
-    </tbody>
-  </table></div>`;
+    </tbody></table></div>`;
 }
 
 function renderMap() {
   if (!map) {
-    map = L.map('mapContainer').setView([-2.5489, 118.0148], 5); // Default memusat ke Indonesia
-    
-    // Base Map gelap (Dark Matter) agar serasi dengan UI
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-      subdomains: 'abcd',
-      maxZoom: 20
+    map = L.map('mapContainer').setView([-2.5489, 118.0148], 5);
+    L.tileLayer('https://{s}[.basemaps.cartocdn.com/dark_all/](https://.basemaps.cartocdn.com/dark_all/){z}/{x}/{y}{r}.png', {
+      attribution: '&copy; OpenStreetMap contributors &copy; CARTO', subdomains: 'abcd', maxZoom: 20
     }).addTo(map);
   }
 
-  // Clear existing layers
   if (heatLayer) map.removeLayer(heatLayer);
   mapMarkers.forEach(m => map.removeLayer(m));
   mapMarkers = [];
-
   const heatData = [];
   
   filteredData.forEach(c => {
-    // Ambil koordinat kab/prov, kalau tak ada skip
-    const coords = GEO_COORDS[c.kabupaten] || GEO_COORDS[c.provinsi];
+    // FALLBACK AMAN: Jika koordinat kota tidak ada, taruh di titik tengah Indonesia. TIDAK AKAN CRASH.
+    const coords = GEO_COORDS[c.kabupaten] || GEO_COORDS[c.provinsi] || [-0.7893, 113.9213];
     
     if (coords) {
-      // Tambahkan jitter (sedikit penggeseran posisi) supaya area bertumpuk tetap terlihat
       const latJitter = (Math.random() - 0.5) * 0.04;
       const lngJitter = (Math.random() - 0.5) * 0.04;
       const finalLat = coords[0] + latJitter;
       const finalLng = coords[1] + lngJitter;
       
-      // Masukkan ke array heatmap dengan bobot dari intensitas jumlah korban
       heatData.push([finalLat, finalLng, c.korban]);
-      
-      // Tambahkan Marker agar bisa diklik
-      const marker = L.circleMarker([finalLat, finalLng], {
-        radius: 6,
-        weight: 1,
-        color: 'var(--surface2)',
-        fillColor: 'var(--red)',
-        fillOpacity: 0.8
-      }).addTo(map);
-
-      // Tooltip ketika hover
-      marker.bindTooltip(`<b>${c.lokasi}</b><br>${c.kabupaten}, ${c.provinsi}<br>Korban: ${c.korban}<br><i style="font-size:10px;color:#aaa;">Klik untuk cari berita</i>`);
-      
-      // Aksi ketika marker diklik -> Buka Tab Baru Berita Google
+      const marker = L.circleMarker([finalLat, finalLng], { radius: 6, weight: 1, color: 'var(--surface2)', fillColor: 'var(--red)', fillOpacity: 0.8 }).addTo(map);
+      marker.bindTooltip(`<b>${c.lokasi}</b><br>${c.kabupaten}, ${c.provinsi}<br>Korban: ${c.korban}`);
       marker.on('click', () => openNews(c.kabupaten, c.lokasi, c.tanggal));
-      
       mapMarkers.push(marker);
     }
   });
 
-  // Eksekusi heatmap
-  heatLayer = L.heatLayer(heatData, {
-    radius: 35,
-    blur: 20,
-    maxZoom: 8,
-    max: 1000, 
-    gradient: {0.2: '#4a9eff', 0.4: '#00d47e', 0.6: '#f5a623', 0.8: '#e3000f', 1.0: '#7a0008'}
-  }).addTo(map);
-
-  // Pastikan Leaflet menghitung ulang ukuran layarnya agar tidak error saat load awal
+  heatLayer = L.heatLayer(heatData, { radius: 35, blur: 20, maxZoom: 8, max: 1000, gradient: {0.2: '#4a9eff', 0.4: '#00d47e', 0.6: '#f5a623', 0.8: '#e3000f', 1.0: '#7a0008'} }).addTo(map);
   setTimeout(() => map.invalidateSize(), 100);
 }
 
 // ─── AI REFRESH ──────────────────────────────────────────────────────────
-function getLatestDate() {
-  return CASES.reduce((max, c) => c.tanggal > max ? c.tanggal : max, '2025-01-01');
-}
-
-async function refreshWithAI() {
-  const btn = document.getElementById('btnRefresh');
-  const icon = document.getElementById('refreshIcon');
-  const label = document.getElementById('refreshLabel');
-  const aiStatus = document.getElementById('aiStatus');
-
-  btn.disabled = true;
-  btn.classList.add('loading');
-  icon.textContent = '⟳';
-  label.textContent = 'Mencari berita…';
-  aiStatus.classList.add('show');
-
-  showToast('info', '🤖 AI Aktif', 'Mencari berita keracunan MBG terbaru dari internet…');
-
-  try {
-    const latestDate = getLatestDate();
-    const existingIds = CASES.map(c => `${c.tanggal}|${c.kabupaten}|${c.korban}`).join(', ');
-
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 2000,
-        tools: [{ type: "web_search_20250305", name: "web_search" }],
-        messages: [{
-          role: "user",
-          content: `Cari berita terbaru hari ini tentang kasus keracunan MBG (Makan Bergizi Gratis) di Indonesia. Tanggal hari ini: ${new Date().toLocaleDateString('id-ID', {day:'numeric',month:'long',year:'numeric'})}.
-
-Fokus pada kasus yang terjadi SETELAH tanggal ${latestDate}. Cari dengan keyword: "keracunan MBG", "keracunan Makan Bergizi Gratis", "siswa keracunan MBG 2026".
-
-Kembalikan HANYA JSON valid tanpa penjelasan, tanpa markdown, langsung JSON:
-{
-  "kasus_baru": [
-    {
-      "tanggal": "YYYY-MM-DD",
-      "provinsi": "nama provinsi lengkap",
-      "kabupaten": "nama kabupaten/kota",
-      "kecamatan": "nama kecamatan atau - jika tidak diketahui",
-      "kelurahan": "nama kelurahan/desa atau - jika tidak diketahui",
-      "lokasi": "nama sekolah atau tempat spesifik",
-      "korban": angka_integer,
-      "rawatInap": angka_integer_atau_0,
-      "gejala": "deskripsi gejala singkat",
-      "sumber": "nama media",
-      "isKLB": true_atau_false
-    }
-  ],
-  "ringkasan": "1-2 kalimat ringkasan situasi terbaru"
-}`
-        }]
-      })
-    });
-
-    if (!response.ok) throw new Error(`API error: ${response.status}`);
-    const data = await response.json();
-
-    // Extract text from all content blocks
-    const textContent = (data.content || [])
-      .filter(b => b.type === 'text')
-      .map(b => b.text)
-      .join('\n');
-
-    // Parse JSON from response
-    let parsed = null;
-    const jsonMatch = textContent.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      try { parsed = JSON.parse(jsonMatch[0]); } catch(e) {}
-    }
-
-    if (parsed && parsed.kasus_baru && Array.isArray(parsed.kasus_baru)) {
-      const newCases = parsed.kasus_baru.filter(nc => {
-        // Deduplicate by date+kabupaten
-        return !CASES.some(existing =>
-          existing.tanggal === nc.tanggal &&
-          existing.kabupaten?.toLowerCase() === nc.kabupaten?.toLowerCase()
-        );
-      });
-
-      if (newCases.length > 0) {
-        newCases.forEach(nc => {
-          CASES.unshift({
-            id: nextId++,
-            tanggal: nc.tanggal || new Date().toISOString().split('T')[0],
-            provinsi: nc.provinsi || '-',
-            kabupaten: nc.kabupaten || '-',
-            kecamatan: nc.kecamatan || '-',
-            kelurahan: nc.kelurahan || '-',
-            lokasi: nc.lokasi || '-',
-            korban: parseInt(nc.korban) || 0,
-            rawatInap: parseInt(nc.rawatInap) || 0,
-            gejala: nc.gejala || '-',
-            sumber: nc.sumber || 'AI Search',
-            isNew: true,
-            isKLB: !!nc.isKLB
-          });
-        });
-
-        // Rebuild geo dropdowns
-        rebuildGeo();
-        applyFilters();
-        showToast('success', `✅ ${newCases.length} Kasus Baru Ditemukan`, parsed.ringkasan || 'Data berhasil diperbarui dari pencarian berita terkini.');
-      } else {
-        showToast('info', '✓ Data Sudah Terkini', parsed.ringkasan || 'Tidak ada kasus baru yang ditemukan setelah pencarian berita terkini.');
-        applyFilters();
-      }
-    } else {
-      showToast('info', '✓ Pencarian Selesai', 'AI tidak menemukan kasus baru yang dapat diverifikasi saat ini.');
-    }
-
-  } catch (err) {
-    console.error(err);
-    showToast('error', '⚠ Gagal Memperbarui', `Terjadi kesalahan: ${err.message}. Coba lagi beberapa saat.`);
-  } finally {
-    btn.disabled = false;
-    btn.classList.remove('loading');
-    icon.textContent = '⟳';
-    label.textContent = 'Perbarui dengan AI';
-    aiStatus.classList.remove('show');
-  }
-}
-
-function rebuildGeo() {
-  const provinsiSel = document.getElementById('filterProvinsi');
-  const savedProv = provinsiSel.value;
-  provinsiSel.innerHTML = '<option value="">Semua Provinsi</option>';
-  const unique = [...new Set(CASES.map(c => c.provinsi))].sort();
-  unique.forEach(p => {
-    const o = document.createElement('option');
-    o.value = p; o.textContent = p;
-    provinsiSel.appendChild(o);
-  });
-  if (savedProv) provinsiSel.value = savedProv;
+function refreshWithAI() {
+  showToast('info', 'Otomatisasi Aktif', 'Pembaruan data sekarang berjalan otomatis setiap hari menggunakan GitHub Actions dan Gemini di latar belakang.');
 }
 
 // ─── TOAST ───────────────────────────────────────────────────────────────
@@ -1123,7 +843,6 @@ function showToast(type, title, msg) {
 
 // ─── INIT ─────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-  // Set today as max date
   document.getElementById('dateTo').max = new Date().toISOString().split('T')[0];
   buildGeoOptions();
   applyFilters();

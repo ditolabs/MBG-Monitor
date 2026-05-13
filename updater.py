@@ -89,7 +89,6 @@ try:
     # 4. Ubah JSON dari Gemini menjadi string JavaScript
     kasus_baru_js = ""
     for kasus in kasus_baru:
-        # Hapus ID dari AI dan gunakan timestamp agar unik
         kasus['id'] = "Date.now() + Math.floor(Math.random() * 1000)"
         
         kasus_js = f"""
@@ -110,18 +109,21 @@ try:
   }},"""
         kasus_baru_js += kasus_js
 
- # ... (bagian atas script tetap sama) ...
+    # 5. Suntikkan ke dalam data.js (BUKAN index.html)
+    with open('data.js', 'r', encoding='utf-8') as file:
+        content = file.read()
 
-# 5. Suntikkan ke dalam data.js (BUKAN index.html)
-with open('data.js', 'r', encoding='utf-8') as file:
-    content = file.read()
+    target_string = "let CASES = ["
+    insert_position = content.find(target_string) + len(target_string)
 
-target_string = "let CASES = ["
-insert_position = content.find(target_string) + len(target_string)
+    if insert_position > len(target_string):
+        new_content = content[:insert_position] + kasus_baru_js + content[insert_position:]
+        
+        with open('data.js', 'w', encoding='utf-8') as file:
+            file.write(new_content)
+        print("Database data.js berhasil diperbarui!")
+    else:
+        print("Error: Tidak menemukan array CASES di data.js")
 
-if insert_position > len(target_string):
-    new_content = content[:insert_position] + kasus_baru_js + content[insert_position:]
-    
-    with open('data.js', 'w', encoding='utf-8') as file:
-        file.write(new_content)
-    print("Database data.js berhasil diperbarui!")
+except Exception as e:
+    print(f"Terjadi kesalahan saat memproses dengan Gemini: {e}")
