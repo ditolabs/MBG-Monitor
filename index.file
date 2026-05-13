@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MBG Monitor — Pantau Kasus Keracunan Makan Bergizi Gratis</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=IBM+Plex+Mono:wght@400;600&family=Noto+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+<style>
+:root {
+  --bg: #0c0c0e;
+  --surface: #131316;
+  --surface2: #1a1a1f;
+  --surface3: #222228;
+  --border: #2a2a32;
+  --border2: #363640;
+  --red: #e3000f;
+  --red-dim: #7a0008;
+  --red-glow: rgba(227,0,15,0.12);
+  --amber: #f5a623;
+  --green: #00d47e;
+  --blue: #4a9eff;
+  --text: #e8e8ec;
+  --muted: #6b6b7b;
+  --muted2: #4a4a58;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Noto Sans', sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+  overflow-x: hidden;
+  min-height: 100vh;
+}
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+  opacity: 0.022; pointer-events: none; z-index: 9999;
+}
+
+/* ALERT STRIP */
+.alert-strip {
+  background: var(--red);
+  color: #fff;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  padding: 7px 16px;
+  text-align: center;
+  animation: pulse-strip 3s ease-in-out infinite;
+}
+@keyframes pulse-strip { 0%,100%{opacity:1} 50%{opacity:.82} }
+
+/* HEADER */
+header {
+  border-bottom: 1px solid var(--border);
+  padding: 22px 28px 18px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.logo-eyebrow { font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:.18em; text-transform:uppercase; color:var(--red); margin-bottom:4px; }
+.logo-title { font-family:'Playfair Display',serif; font-size:clamp(24px,4vw,40px); font-weight:900; line-height:1; color:#fff; letter-spacing:-.02em; }
+.logo-title span { color:var(--red); }
+.logo-sub { margin-top:5px; font-size:12px; color:var(--muted); }
+.header-right { display:flex; flex-direction:column; align-items:flex-end; gap:8px; }
+.live-badge { display:inline-flex; align-items:center; gap:6px; background:var(--surface2); border:1px solid var(--border); border-radius:4px; padding:5px 11px; font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--muted); }
+.live-dot { width:7px; height:7px; border-radius:50%; background:var(--green); animation:blink 1.4s ease-in-out infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.25} }
+
+/* REFRESH BUTTON */
+.btn-refresh {
+  display:inline-flex; align-items:center; gap:7px;
+  background: linear-gradient(135deg, var(--red-dim), var(--red));
+  border:none; border-radius:4px;
+  padding:8px 16px;
+  font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:.07em;
+  color:#fff; cursor:pointer; transition:opacity .2s, transform .15s;
+  text-transform:uppercase;
+}
+.btn-refresh:hover { opacity:.88; transform:translateY(-1px); }
+.btn-refresh:active { transform:translateY(0); }
+.btn-refresh:disabled { opacity:.45; cursor:not-allowed; transform:none; }
+.btn-refresh .spin { display:inline-block; }
+.btn-refresh.loading .spin { animation:spin .7s linear infinite; }
+@keyframes spin { to{transform:rotate(360deg)} }
+
+/* LAYOUT */
+.app-body { display:grid; grid-template-columns:280px 1fr; min-height:calc(100vh - 130px); }
+
+/* SIDEBAR */
+.sidebar {
+  border-right:1px solid var(--border);
+  padding:20px 16px;
+  background:var(--surface);
+  position:sticky; top:0; height:100vh; overflow-y:auto;
+}
+.sidebar::-webkit-scrollbar { width:4px; }
+.sidebar::-webkit-scrollbar-track { background:transparent; }
+.sidebar::-webkit-scrollbar-thumb { background:var(--border2); border-radius:2px; }
+.filter-section { margin-bottom:24px; }
+.filter-label {
+  font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--muted); margin-bottom:8px; display:block;
+}
+.filter-select, .filter-input {
+  width:100%; background:var(--surface2); border:1px solid var(--border);
+  border-radius:3px; color:var(--text); font-family:'Noto Sans',sans-serif;
+  font-size:13px; padding:8px 10px; outline:none; transition:border-color .2s;
+  appearance:none; -webkit-appearance:none;
+}
+.filter-select { background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b6b7b' d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 10px center; padding-right:28px; }
+.filter-select:focus, .filter-input:focus { border-color:var(--red-dim); }
+.filter-select option { background:var(--surface2); }
+.date-row { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.filter-reset {
+  width:100%; background:transparent; border:1px solid var(--border);
+  color:var(--muted); font-family:'IBM Plex Mono',monospace; font-size:10px;
+  letter-spacing:.1em; text-transform:uppercase; padding:7px;
+  border-radius:3px; cursor:pointer; transition:border-color .2s, color .2s;
+  margin-top:4px;
+}
+.filter-reset:hover { border-color:var(--red-dim); color:var(--text); }
+.filter-divider { height:1px; background:var(--border); margin:20px 0; }
+
+/* STAT MINI CARDS */
+.mini-stats { display:flex; flex-direction:column; gap:8px; }
+.mini-stat {
+  background:var(--surface2); border:1px solid var(--border); border-radius:3px;
+  padding:10px 12px;
+}
+.mini-stat-label { font-family:'IBM Plex Mono',monospace; font-size:9px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); margin-bottom:4px; }
+.mini-stat-val { font-family:'Playfair Display',serif; font-size:22px; font-weight:700; line-height:1; }
+.mini-stat-val.red { color:var(--red); }
+.mini-stat-val.amber { color:var(--amber); }
+
+/* MAIN PANEL */
+.main-panel { padding:20px 24px; overflow-y:auto; }
+
+/* TOOLBAR */
+.toolbar {
+  display:flex; align-items:center; gap:10px; margin-bottom:16px; flex-wrap:wrap;
+}
+.search-wrap { flex:1; min-width:200px; position:relative; }
+.search-wrap input {
+  width:100%; background:var(--surface); border:1px solid var(--border);
+  border-radius:3px; color:var(--text); font-size:13px; padding:8px 10px 8px 34px;
+  outline:none; font-family:'Noto Sans',sans-serif; transition:border-color .2s;
+}
+.search-wrap input:focus { border-color:var(--red-dim); }
+.search-wrap .search-icon { position:absolute; left:10px; top:50%; transform:translateY(-50%); color:var(--muted); font-size:14px; pointer-events:none; }
+.view-toggle { display:flex; border:1px solid var(--border); border-radius:3px; overflow:hidden; }
+.view-btn { background:var(--surface); border:none; color:var(--muted); padding:7px 12px; cursor:pointer; font-size:14px; transition:background .15s, color .15s; }
+.view-btn.active { background:var(--surface3); color:var(--text); }
+.result-count { font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--muted); white-space:nowrap; }
+
+/* CASE CARDS */
+.cases-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:12px; }
+.case-card {
+  background:var(--surface); border:1px solid var(--border); border-radius:3px;
+  padding:16px 18px; transition:border-color .2s, background .2s;
+  position:relative; overflow:hidden; animation:fadeIn .3s ease both;
+}
+.case-card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:var(--red); transform:scaleX(0); transform-origin:left; transition:transform .25s; }
+.case-card:hover { border-color:var(--border2); background:var(--surface2); }
+.case-card:hover::before { transform:scaleX(1); }
+.case-card.new-case { border-color:var(--red-dim); }
+.case-card.new-case::before { transform:scaleX(1); }
+@keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
+
+.card-top { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px; gap:8px; }
+.card-date { font-family:'IBM Plex Mono',monospace; font-size:10px; color:var(--red); letter-spacing:.07em; }
+.badge { display:inline-block; border-radius:2px; padding:2px 7px; font-family:'IBM Plex Mono',monospace; font-size:9px; letter-spacing:.08em; text-transform:uppercase; }
+.badge-new { background:var(--red-glow); border:1px solid var(--red-dim); color:var(--red); }
+.badge-klb { background:rgba(245,166,35,.12); border:1px solid rgba(245,166,35,.3); color:var(--amber); }
+.card-lokasi { font-weight:700; font-size:14px; color:#fff; margin-bottom:4px; line-height:1.3; }
+.card-geo { font-size:12px; color:var(--muted); margin-bottom:10px; display:flex; align-items:center; gap:4px; flex-wrap:wrap; }
+.geo-sep { color:var(--muted2); }
+.card-gejala { font-size:12px; color:var(--muted); margin-bottom:12px; }
+.card-bottom { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:6px; }
+.korban-chip { display:inline-flex; align-items:center; gap:5px; background:var(--red-glow); border:1px solid var(--red-dim); border-radius:3px; padding:3px 10px; font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--red); font-weight:600; }
+.rawat-chip { display:inline-flex; align-items:center; gap:4px; background:rgba(74,158,255,.08); border:1px solid rgba(74,158,255,.2); border-radius:3px; padding:3px 8px; font-family:'IBM Plex Mono',monospace; font-size:10px; color:var(--blue); }
+.sumber-chip { font-family:'IBM Plex Mono',monospace; font-size:9px; color:var(--muted2); }
+
+/* TABLE VIEW */
+.cases-table { width:100%; border-collapse:collapse; font-size:13px; }
+.cases-table th { font-family:'IBM Plex Mono',monospace; font-size:9px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); text-align:left; padding:9px 12px; border-bottom:1px solid var(--border); background:var(--surface); white-space:nowrap; cursor:pointer; user-select:none; }
+.cases-table th:hover { color:var(--text); }
+.cases-table th .sort-icon { margin-left:4px; opacity:.4; }
+.cases-table th.sorted .sort-icon { opacity:1; color:var(--red); }
+.cases-table td { padding:10px 12px; border-bottom:1px solid var(--border); background:var(--surface); vertical-align:top; }
+.cases-table tr:hover td { background:var(--surface2); }
+.cases-table .td-date { font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--red); white-space:nowrap; }
+.cases-table .td-korban { font-family:'IBM Plex Mono',monospace; font-weight:600; color:var(--amber); }
+.cases-table .td-geo { color:var(--muted); font-size:12px; }
+.cases-table .td-new .badge-new { vertical-align:middle; }
+
+/* TOAST */
+.toast-container { position:fixed; top:16px; right:16px; z-index:9998; display:flex; flex-direction:column; gap:8px; }
+.toast {
+  background:var(--surface2); border:1px solid var(--border2); border-radius:4px;
+  padding:12px 16px; max-width:320px; font-size:13px;
+  box-shadow:0 4px 24px rgba(0,0,0,.4);
+  animation:slideIn .3s ease both;
+  display:flex; align-items:flex-start; gap:10px;
+}
+.toast.success { border-left:3px solid var(--green); }
+.toast.error { border-left:3px solid var(--red); }
+.toast.info { border-left:3px solid var(--blue); }
+.toast-icon { font-size:16px; flex-shrink:0; margin-top:1px; }
+.toast-body {}
+.toast-title { font-weight:700; color:#fff; margin-bottom:3px; }
+.toast-msg { font-size:12px; color:var(--muted); line-height:1.5; }
+@keyframes slideIn { from{opacity:0;transform:translateX(20px)} to{opacity:1;transform:none} }
+
+/* AI STATUS BAR */
+.ai-status {
+  background:var(--surface); border:1px solid var(--border); border-radius:3px;
+  padding:10px 14px; margin-bottom:14px; display:none;
+  font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--muted);
+  align-items:center; gap:10px;
+}
+.ai-status.show { display:flex; }
+.ai-status .progress-wrap { flex:1; background:var(--surface2); border-radius:2px; height:3px; overflow:hidden; }
+.ai-status .progress-bar { height:100%; background:linear-gradient(90deg, var(--red-dim), var(--red)); border-radius:2px; animation:progress-anim 2s ease-in-out infinite; }
+@keyframes progress-anim { 0%{width:0%;margin-left:0} 50%{width:60%;margin-left:20%} 100%{width:0%;margin-left:100%} }
+
+/* EMPTY STATE */
+.empty-state { text-align:center; padding:60px 20px; color:var(--muted); }
+.empty-state .icon { font-size:40px; margin-bottom:12px; }
+.empty-state p { font-size:13px; }
+
+/* FOOTER */
+footer { border-top:1px solid var(--border); padding:16px 28px; display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; font-family:'IBM Plex Mono',monospace; font-size:10px; color:var(--muted); }
+
+/* RESPONSIVE */
+@media(max-width:768px) {
+  .app-body { grid-template-columns:1fr; }
+  .sidebar { position:relative; height:auto; border-right:none; border-bottom:1px solid var(--border); }
+}
+
+/* MAP */
+#mapContainer {
+  width:100%; height:520px; border-radius:3px;
+  border:1px solid var(--border); position:relative;
+}
+.leaflet-tile { filter: invert(100%) hue-rotate(180deg) brightness(0.88) contrast(0.88) saturate(0.6); }
+.leaflet-container { background:#0c0c0e !important; font-family:'Noto Sans',sans-serif; }
+.leaflet-popup-content-wrapper {
+  background:var(--surface2) !important; color:var(--text) !important;
+  border:1px solid var(--border2) !important; border-radius:4px !important;
+  box-shadow:0 4px 20px rgba(0,0,0,.5) !important;
+}
+.leaflet-popup-tip { background:var(--surface2) !important; }
+.leaflet-popup-content { font-size:13px; line-height:1.55; margin:12px 14px; }
+.leaflet-popup-content b { color:#fff; font-size:14px; }
+.leaflet-popup-content .pop-geo { color:var(--muted); font-size:11px; font-family:'IBM Plex Mono',monospace; margin:4px 0 6px; }
+.leaflet-popup-content .pop-korban { color:var(--red); font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:13px; }
+.leaflet-popup-content .pop-gejala { color:var(--muted); font-size:11px; margin:5px 0; }
+.leaflet-popup-content .pop-link {
+  display:inline-block; margin-top:8px; background:var(--red-dim);
+  color:#fff !important; text-decoration:none; font-size:11px;
+  font-family:'IBM Plex Mono',monospace; padding:4px 10px; border-radius:3px;
+  letter-spacing:.05em;
+}
+.leaflet-popup-content .pop-link:hover { background:var(--red); }
+.leaflet-control-attribution { background:rgba(12,12,14,.7) !important; color:var(--muted2) !important; font-size:9px !important; }
+.leaflet-control-zoom a { background:var(--surface2) !important; color:var(--text) !important; border-color:var(--border2) !important; }
+
+/* CLICKABLE CARDS & ROWS */
+.case-card { cursor:pointer; }
+.cases-table tbody tr { cursor:pointer; }
+.cases-table tbody tr:hover td { background:var(--surface3); }
+</style>
+</head>
+<body>
+
+<div class="alert-strip">
+  ⚠ SITUASI AKTIF — Kemenkes: 37.673 korban · 445 kejadian · 36 provinsi · per 10 Mei 2026 — Data terus diperbarui
+</div>
+
+<header>
+  <div>
+    <div class="logo-eyebrow">Pemantau Independen · Indonesia</div>
+    <div class="logo-title">MBG<span>•</span>Monitor</div>
+    <div class="logo-sub">Pantau kasus keracunan program Makan Bergizi Gratis — filter per wilayah</div>
+  </div>
+  <div class="header-right">
+    <div class="live-badge"><span class="live-dot"></span> Live · Diperbarui 13 Mei 2026</div>
+    <button class="btn-refresh" id="btnRefresh" onclick="refreshWithAI()">
+      <span class="spin" id="refreshIcon">⟳</span>
+      <span id="refreshLabel">Perbarui dengan AI</span>
+    </button>
+  </div>
+</header>
+
+<!-- MAP SECTION — standalone, full width -->
+<div id="mapContainer" style="width:100%;height:480px;border-bottom:1px solid var(--border);display:block;"></div>
+
+<div class="app-body">
+  <!-- SIDEBAR FILTER -->
+  <aside class="sidebar">
+    <div class="filter-section">
+      <span class="filter-label">🔍 Cari Lokasi / Kata Kunci</span>
+      <input class="filter-input" id="searchInput" type="text" placeholder="cth: Sumedang, SD, bakteri…" oninput="applyFilters()">
+    </div>
+
+    <div class="filter-divider"></div>
+
+    <div class="filter-section">
+      <span class="filter-label">🗺 Provinsi</span>
+      <select class="filter-select" id="filterProvinsi" onchange="onProvinsiChange()">
+        <option value="">Semua Provinsi</option>
+      </select>
+    </div>
+
+    <div class="filter-section">
+      <span class="filter-label">🏘 Kabupaten / Kota</span>
+      <select class="filter-select" id="filterKabupaten" onchange="onKabupatenChange()">
+        <option value="">Semua Kabupaten</option>
+      </select>
+    </div>
+
+    <div class="filter-section">
+      <span class="filter-label">📍 Kecamatan</span>
+      <select class="filter-select" id="filterKecamatan" onchange="applyFilters()">
+        <option value="">Semua Kecamatan</option>
+      </select>
+    </div>
+
+    <div class="filter-divider"></div>
+
+    <div class="filter-section">
+      <span class="filter-label">📅 Rentang Tanggal</span>
+      <div class="date-row">
+        <input class="filter-input" id="dateFrom" type="date" value="2025-01-01" onchange="applyFilters()" style="font-size:12px;">
+        <input class="filter-input" id="dateTo" type="date" onchange="applyFilters()" style="font-size:12px;">
+      </div>
+    </div>
+
+    <div class="filter-section">
+      <span class="filter-label">👥 Min. Korban</span>
+      <input class="filter-input" id="minKorban" type="number" placeholder="cth: 50" min="0" oninput="applyFilters()">
+    </div>
+
+    <button class="filter-reset" onclick="resetFilters()">↺ Reset Semua Filter</button>
+
+    <div class="filter-divider"></div>
+
+    <!-- MINI STATS -->
+    <div class="mini-stats" id="miniStats">
+      <div class="mini-stat">
+        <div class="mini-stat-label">Kasus Tampil</div>
+        <div class="mini-stat-val amber" id="statKasus">0</div>
+      </div>
+      <div class="mini-stat">
+        <div class="mini-stat-label">Total Korban</div>
+        <div class="mini-stat-val red" id="statKorban">0</div>
+      </div>
+      <div class="mini-stat">
+        <div class="mini-stat-label">Rawat Inap</div>
+        <div class="mini-stat-val" id="statRawat">0</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN PANEL -->
+  <main class="main-panel">
+    <!-- TOOLBAR -->
+    <div class="toolbar">
+      <div class="search-wrap">
+        <span class="search-icon">⊕</span>
+        <input type="text" id="searchInput2" placeholder="Cari di hasil filter…" oninput="applyFilters()">
+      </div>
+      <span class="result-count" id="resultCount">Memuat…</span>
+      <div class="view-toggle">
+        <button class="view-btn active" id="btnCard" onclick="setView('card')" title="Tampilan Kartu">▦</button>
+        <button class="view-btn" id="btnTable" onclick="setView('table')" title="Tampilan Tabel">≡</button>
+      </div>
+    </div>
+
+    <!-- AI STATUS -->
+    <div class="ai-status" id="aiStatus">
+      <span>🤖 AI sedang mencari berita terbaru…</span>
+      <div class="progress-wrap"><div class="progress-bar"></div></div>
+    </div>
+
+    <!-- CASES OUTPUT -->
+    <div id="casesOutput"></div>
+  </main>
+</div>
+
+<footer>
+  <div>Sumber: Kemenkes RI · JPPI · BGN · Wikipedia · Media terpercaya</div>
+  <div>MBG Monitor · Independen · Non-komersial · 2026</div>
+</footer>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+// ─── DATASET ──────────────────────────────────────────────────────────────
+let CASES = [
+  { id:1, tanggal:"2025-01-16", provinsi:"Jawa Tengah", kabupaten:"Sukoharjo", kecamatan:"Sukoharjo", lokasi:"SD Negeri 3 Dukuh", korban:40, rawatInap:0, gejala:"Mual, muntah (ayam marinasi)", sumber:"Kepresidenan / Detik.com", isNew:false, isKLB:false },
+  { id:2, tanggal:"2025-02-18", provinsi:"Sumatera Selatan", kabupaten:"Empat Lawang", kecamatan:"Tebing Tinggi", lokasi:"SPPG Tanjungkupang", korban:8, rawatInap:0, gejala:"Gangguan kesehatan", sumber:"BGN", isNew:false, isKLB:false },
+  { id:3, tanggal:"2025-05-05", provinsi:"Sumatera Selatan", kabupaten:"PALI", kecamatan:"Talang Ubi", lokasi:"SPPG Handayani Mulya", korban:12, rawatInap:0, gejala:"Dugaan keracunan", sumber:"BGN", isNew:false, isKLB:false },
+  { id:4, tanggal:"2025-07-15", provinsi:"Lampung", kabupaten:"Lampung Utara", kecamatan:"-", lokasi:"SD Negeri, Lampung Utara", korban:16, rawatInap:0, gejala:"Keracunan setelah santap MBG", sumber:"Cakra Lampung", isNew:false, isKLB:false },
+  { id:5, tanggal:"2025-08-12", provinsi:"Lampung", kabupaten:"Bandar Lampung", kecamatan:"-", lokasi:"Sekolah, Lampung", korban:18, rawatInap:0, gejala:"Mual, lemas usai konsumsi lele", sumber:"Liputan6", isNew:false, isKLB:false },
+  { id:6, tanggal:"2025-08-28", provinsi:"Lampung", kabupaten:"Lampung Timur", kecamatan:"-", lokasi:"SMP, Lampung Timur", korban:40, rawatInap:31, gejala:"Keracunan, 31 rawat inap", sumber:"iNews Lampung", isNew:false, isKLB:false },
+  { id:7, tanggal:"2025-08-30", provinsi:"Lampung", kabupaten:"Lampung Utara", kecamatan:"-", lokasi:"Sekolah, Lampung Utara", korban:16, rawatInap:0, gejala:"Keracunan MBG berulang", sumber:"Detik Sumbagsel", isNew:false, isKLB:false },
+  { id:8, tanggal:"2025-09-12", provinsi:"Jawa Tengah", kabupaten:"Wonogiri", kecamatan:"Wonogiri Kota", lokasi:"MIN Wonogiri", korban:110, rawatInap:0, gejala:"Mual, diare setelah santap MBG", sumber:"JOGLOSEMAR News", isNew:false, isKLB:false },
+  { id:9, tanggal:"2025-09-17", provinsi:"Sulawesi Tengah", kabupaten:"Banggai Kepulauan", kecamatan:"Salakan", lokasi:"RS Trikora Salakan", korban:251, rawatInap:78, gejala:"Keracunan massal, 78 rawat intensif", sumber:"Tribunnews", isNew:false, isKLB:false },
+  { id:10, tanggal:"2025-09-18", provinsi:"Maluku", kabupaten:"Kota Tual", kecamatan:"Tual", lokasi:"SDN 19 Kota Tual", korban:18, rawatInap:10, gejala:"Keracunan usai santap MBG di sekolah", sumber:"Tribun Manado", isNew:false, isKLB:false },
+  { id:11, tanggal:"2025-09-26", provinsi:"Jawa Barat", kabupaten:"Bandung Barat", kecamatan:"Cipongkor", lokasi:"Berbagai sekolah, Cipongkor KBB", korban:1333, rawatInap:0, gejala:"Keracunan bakteri massal — terbesar tunggal", sumber:"Kompas / Detik", isNew:false, isKLB:false },
+  { id:12, tanggal:"2025-09-26", provinsi:"Jawa Barat", kabupaten:"Sumedang", kecamatan:"-", lokasi:"Berbagai sekolah, Sumedang", korban:164, rawatInap:0, gejala:"Keracunan MBG massal", sumber:"Detik.com", isNew:false, isKLB:false },
+  { id:13, tanggal:"2025-09-26", provinsi:"Jawa Barat", kabupaten:"Bogor", kecamatan:"Jonggol", lokasi:"SMP, Jonggol, Bogor", korban:4, rawatInap:0, gejala:"Dugaan keracunan menu MBG", sumber:"Detiknews", isNew:false, isKLB:false },
+  { id:14, tanggal:"2025-09-26", provinsi:"Lampung", kabupaten:"Bandar Lampung", kecamatan:"Way Lunik", lokasi:"SMAN 6 Bandar Lampung", korban:300, rawatInap:0, gejala:"Keracunan massal, dapur Way Lunik disetop", sumber:"Liputan6", isNew:false, isKLB:false },
+  { id:15, tanggal:"2025-09-29", provinsi:"Jawa Barat", kabupaten:"Ciamis", kecamatan:"Pamarican", lokasi:"SMPN 4 Pamarican, Ciamis", korban:52, rawatInap:0, gejala:"Keracunan (ayam dan labu)", sumber:"Tribunnews", isNew:false, isKLB:false },
+  { id:16, tanggal:"2025-10-01", provinsi:"Jawa Barat", kabupaten:"Bogor", kecamatan:"Megamendung", lokasi:"SDN Pasir Angin 02, Bogor", korban:107, rawatInap:3, gejala:"107 siswa sakit, 3 muntah", sumber:"Detikjabar", isNew:false, isKLB:false },
+  { id:17, tanggal:"2025-10-01", provinsi:"Lampung", kabupaten:"Lampung Utara", kecamatan:"-", lokasi:"SMA, Lampung Utara", korban:52, rawatInap:0, gejala:"Keracunan (menu ayam crispy MBG)", sumber:"Detik Sumbagsel", isNew:false, isKLB:false },
+  { id:18, tanggal:"2025-10-09", provinsi:"Jawa Tengah", kabupaten:"Wonogiri", kecamatan:"Slogohimo", lokasi:"Sekolah & Pesantren, Slogohimo", korban:200, rawatInap:0, gejala:"Keracunan massal (ratusan siswa + santri)", sumber:"Detikjateng", isNew:false, isKLB:false },
+  { id:19, tanggal:"2025-10-17", provinsi:"Jawa Barat", kabupaten:"Bogor", kecamatan:"Gunung Putri", lokasi:"SDN Ciangsana 02, Bogor", korban:7, rawatInap:0, gejala:"Mual, muntah usai konsumsi MBG", sumber:"Kompas.com", isNew:false, isKLB:false },
+  { id:20, tanggal:"2025-10-20", provinsi:"Sumatera Utara", kabupaten:"Toba", kecamatan:"-", lokasi:"Berbagai sekolah, Kab. Toba", korban:121, rawatInap:32, gejala:"Dugaan keracunan MBG, 32 dirawat RS", sumber:"Metro Daily", isNew:false, isKLB:false },
+  { id:21, tanggal:"2025-10-31", provinsi:"Sumatera Utara", kabupaten:"Nias Utara", kecamatan:"-", lokasi:"SD, Nias Utara", korban:30, rawatInap:0, gejala:"Sakit perut, sesak napas (susu MBG)", sumber:"Wahana News Nias", isNew:false, isKLB:false },
+  { id:22, tanggal:"2025-12-04", provinsi:"Lampung", kabupaten:"Lampung Selatan", kecamatan:"Kalianda", lokasi:"SMPN Kalianda, Lamsel", korban:40, rawatInap:0, gejala:"Dugaan keracunan makanan MBG", sumber:"Dinkes Lamsel", isNew:false, isKLB:false },
+  { id:23, tanggal:"2026-01-14", provinsi:"Jawa Tengah", kabupaten:"Wonogiri", kecamatan:"Jatisrono", lokasi:"Berbagai sekolah, Jatisrono", korban:206, rawatInap:0, gejala:"Keracunan massal MBG", sumber:"Suara Merdeka", isNew:false, isKLB:false },
+  { id:24, tanggal:"2026-02-12", provinsi:"Sumatera Utara", kabupaten:"Dairi", kecamatan:"-", lokasi:"Berbagai sekolah, Kab. Dairi", korban:271, rawatInap:0, gejala:"Keracunan MBG (terus bertambah)", sumber:"Mistar.id", isNew:false, isKLB:false },
+  { id:25, tanggal:"2026-02-15", provinsi:"Lampung", kabupaten:"Bandar Lampung", kecamatan:"Kemiling", lokasi:"Berbagai sekolah, Kemiling", korban:300, rawatInap:0, gejala:"Keracunan massal MBG", sumber:"VIVA Lampung", isNew:false, isKLB:false },
+  { id:26, tanggal:"2026-02-24", provinsi:"Sumatera Utara", kabupaten:"Nias Selatan", kecamatan:"Kepulauan Batu", lokasi:"SDN 071123 Kepulauan Batu", korban:35, rawatInap:0, gejala:"Dugaan keracunan MBG", sumber:"Komunitas Today", isNew:false, isKLB:false },
+  { id:27, tanggal:"2026-02-28", provinsi:"Aceh", kabupaten:"Aceh Selatan", kecamatan:"-", lokasi:"Wilayah Aceh Selatan", korban:120, rawatInap:0, gejala:"KLB keracunan pangan MBG ditetapkan Dinkes", sumber:"Merdeka.com", isNew:false, isKLB:true },
+  { id:28, tanggal:"2026-05-08", provinsi:"Jawa Timur", kabupaten:"Lumajang", kecamatan:"Jatiroto", lokasi:"SMKN 1 Jatiroto, Lumajang", korban:200, rawatInap:0, gejala:"Ratusan siswa & guru alami diare, diselidiki", sumber:"RI News Portal", isNew:false, isKLB:false },
+  { id:29, tanggal:"2026-05-12", provinsi:"Jawa Timur", kabupaten:"Surabaya", kecamatan:"-", lokasi:"Berbagai sekolah, Surabaya", korban:200, rawatInap:0, gejala:"Keracunan MBG — walimurid minta ganti bekal", sumber:"Kompas.com", isNew:false, isKLB:false },
+];
+
+// ─── KOORDINAT (lat, lng per id kasus) ───────────────────────────────────
+const COORDS = {
+  1:[-7.672,110.838], 2:[-3.954,103.082], 3:[-3.501,103.798],
+  4:[-4.550,104.660], 5:[-5.389,105.262], 6:[-5.100,105.900],
+  7:[-4.550,104.660], 8:[-7.810,110.920], 9:[-1.580,123.480],
+  10:[-5.630,132.740],11:[-6.846,107.404],12:[-6.858,107.920],
+  13:[-6.531,107.069],14:[-5.430,105.230],15:[-7.394,108.352],
+  16:[-6.716,106.936],17:[-4.550,104.660],18:[-7.856,111.014],
+  19:[-6.462,107.000],20:[2.577,99.084],  21:[1.308,97.538],
+  22:[-5.722,105.561],23:[-7.902,111.091],24:[2.777,98.320],
+  25:[-5.389,105.262],26:[0.452,97.830],  27:[3.000,97.580],
+  28:[-8.126,113.220],29:[-7.257,112.752]
+};
+CASES.forEach(c => { if (COORDS[c.id]) { c.lat = COORDS[c.id][0]; c.lng = COORDS[c.id][1]; } });
+
+// ─── STATE ────────────────────────────────────────────────────────────────
+let currentView = 'card';
+let sortField = 'tanggal';
+let sortDir = -1;
+let filteredData = [...CASES];
+let nextId = CASES.length + 1;
+
+// ─── GEO HELPERS ─────────────────────────────────────────────────────────
+function buildGeoOptions() {
+  const provinsiSel = document.getElementById('filterProvinsi');
+  const unique = [...new Set(CASES.map(c => c.provinsi))].sort();
+  unique.forEach(p => {
+    const o = document.createElement('option');
+    o.value = p; o.textContent = p;
+    provinsiSel.appendChild(o);
+  });
+}
+
+function onProvinsiChange() {
+  const prov = document.getElementById('filterProvinsi').value;
+  const kabSel = document.getElementById('filterKabupaten');
+  const kecSel = document.getElementById('filterKecamatan');
+  kabSel.innerHTML = '<option value="">Semua Kabupaten</option>';
+  kecSel.innerHTML = '<option value="">Semua Kecamatan</option>';
+  if (prov) {
+    const kabs = [...new Set(CASES.filter(c => c.provinsi === prov).map(c => c.kabupaten))].sort();
+    kabs.forEach(k => {
+      const o = document.createElement('option');
+      o.value = k; o.textContent = k;
+      kabSel.appendChild(o);
+    });
+  }
+  applyFilters();
+}
+
+function onKabupatenChange() {
+  const prov = document.getElementById('filterProvinsi').value;
+  const kab = document.getElementById('filterKabupaten').value;
+  const kecSel = document.getElementById('filterKecamatan');
+  kecSel.innerHTML = '<option value="">Semua Kecamatan</option>';
+  if (kab) {
+    const kecs = [...new Set(
+      CASES.filter(c => (!prov || c.provinsi === prov) && c.kabupaten === kab && c.kecamatan !== '-')
+        .map(c => c.kecamatan)
+    )].sort();
+    kecs.forEach(k => {
+      const o = document.createElement('option');
+      o.value = k; o.textContent = k;
+      kecSel.appendChild(o);
+    });
+  }
+  applyFilters();
+}
+
+// ─── FILTERS ──────────────────────────────────────────────────────────────
+function applyFilters() {
+  const search1 = (document.getElementById('searchInput').value || '').toLowerCase();
+  const search2 = (document.getElementById('searchInput2').value || '').toLowerCase();
+  const search = search1 || search2;
+  const prov = document.getElementById('filterProvinsi').value;
+  const kab = document.getElementById('filterKabupaten').value;
+  const kec = document.getElementById('filterKecamatan').value;
+  const dateFrom = document.getElementById('dateFrom').value;
+  const dateTo = document.getElementById('dateTo').value;
+  const minK = parseInt(document.getElementById('minKorban').value) || 0;
+
+  filteredData = CASES.filter(c => {
+    if (search && ![c.lokasi, c.provinsi, c.kabupaten, c.kecamatan, c.gejala, c.sumber].join(' ').toLowerCase().includes(search)) return false;
+    if (prov && c.provinsi !== prov) return false;
+    if (kab && c.kabupaten !== kab) return false;
+    if (kec && c.kecamatan !== kec) return false;
+    if (dateFrom && c.tanggal < dateFrom) return false;
+    if (dateTo && c.tanggal > dateTo) return false;
+    if (c.korban < minK) return false;
+    return true;
+  });
+
+  sortData();
+  updateStats();
+  updateMap();
+  render();
+}
+
+function resetFilters() {
+  document.getElementById('searchInput').value = '';
+  document.getElementById('searchInput2').value = '';
+  document.getElementById('filterProvinsi').value = '';
+  document.getElementById('filterKabupaten').value = '';
+  document.getElementById('filterKecamatan').value = '';
+  document.getElementById('filterKabupaten').innerHTML = '<option value="">Semua Kabupaten</option>';
+  document.getElementById('filterKecamatan').innerHTML = '<option value="">Semua Kecamatan</option>';
+  document.getElementById('dateFrom').value = '2025-01-01';
+  document.getElementById('dateTo').value = '';
+  document.getElementById('minKorban').value = '';
+  applyFilters();
+}
+
+// ─── SORT ─────────────────────────────────────────────────────────────────
+function sortData() {
+  filteredData.sort((a, b) => {
+    let va = a[sortField], vb = b[sortField];
+    if (typeof va === 'string') return va.localeCompare(vb) * sortDir;
+    return (va - vb) * sortDir;
+  });
+}
+
+function setSort(field) {
+  if (sortField === field) sortDir *= -1;
+  else { sortField = field; sortDir = -1; }
+  sortData();
+  render();
+}
+
+// ─── STATS ────────────────────────────────────────────────────────────────
+function updateStats() {
+  const totalKorban = filteredData.reduce((s, c) => s + c.korban, 0);
+  const totalRawat = filteredData.reduce((s, c) => s + c.rawatInap, 0);
+  document.getElementById('statKasus').textContent = filteredData.length.toLocaleString('id-ID');
+  document.getElementById('statKorban').textContent = totalKorban.toLocaleString('id-ID');
+  document.getElementById('statRawat').textContent = totalRawat.toLocaleString('id-ID');
+  document.getElementById('resultCount').textContent = `${filteredData.length} kasus ditemukan`;
+}
+
+// ─── RENDER ───────────────────────────────────────────────────────────────
+function setView(v) {
+  currentView = v;
+  document.getElementById('btnCard').classList.toggle('active', v === 'card');
+  document.getElementById('btnTable').classList.toggle('active', v === 'table');
+  render();
+}
+
+function fmtDate(d) {
+  const months = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+  const [y, m, day] = d.split('-');
+  return `${parseInt(day)} ${months[parseInt(m)-1]} ${y}`;
+}
+
+function render() {
+  const out = document.getElementById('casesOutput');
+  if (filteredData.length === 0) {
+    out.innerHTML = `<div class="empty-state"><div class="icon">🔍</div><p>Tidak ada kasus yang cocok dengan filter ini.<br>Coba ubah kriteria pencarian.</p></div>`;
+    return;
+  }
+  if (currentView === 'card') renderCards(out);
+  else renderTable(out);
+}
+
+function renderCards(out) {
+  out.innerHTML = `<div class="cases-grid">${filteredData.map(c => `
+    <div class="case-card ${c.isNew ? 'new-case' : ''}" onclick="openNews(${c.id})" title="Klik untuk cari berita: ${c.lokasi}">
+      <div class="card-top">
+        <div class="card-date">${fmtDate(c.tanggal)}</div>
+        <div>
+          ${c.isNew ? '<span class="badge badge-new">Baru</span>' : ''}
+          ${c.isKLB ? '<span class="badge badge-klb">KLB</span>' : ''}
+        </div>
+      </div>
+      <div class="card-lokasi">${c.lokasi}</div>
+      <div class="card-geo">
+        <span>${c.provinsi}</span>
+        <span class="geo-sep">›</span>
+        <span>${c.kabupaten}</span>
+        ${c.kecamatan !== '-' ? `<span class="geo-sep">›</span><span>${c.kecamatan}</span>` : ''}
+      </div>
+      <div class="card-gejala">${c.gejala}</div>
+      <div class="card-bottom">
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <span class="korban-chip">⚠ ${c.korban.toLocaleString('id-ID')} korban</span>
+          ${c.rawatInap ? `<span class="rawat-chip">🏥 ${c.rawatInap} rawat inap</span>` : ''}
+        </div>
+        <span class="sumber-chip">${c.sumber}</span>
+      </div>
+    </div>`).join('')}</div>`;
+}
+
+function renderTable(out) {
+  const cols = [
+    { field:'tanggal', label:'Tanggal' },
+    { field:'provinsi', label:'Provinsi' },
+    { field:'kabupaten', label:'Kabupaten' },
+    { field:'kecamatan', label:'Kecamatan' },
+    { field:'lokasi', label:'Lokasi' },
+    { field:'korban', label:'Korban' },
+    { field:'gejala', label:'Gejala' },
+    { field:'sumber', label:'Sumber' },
+  ];
+  out.innerHTML = `<div style="overflow-x:auto"><table class="cases-table">
+    <thead><tr>${cols.map(c => `
+      <th onclick="setSort('${c.field}')" class="${sortField===c.field?'sorted':''}">
+        ${c.label} <span class="sort-icon">${sortField===c.field?(sortDir===1?'↑':'↓'):'↕'}</span>
+      </th>`).join('')}</tr></thead>
+    <tbody>${filteredData.map(c => `
+      <tr onclick="openNews(${c.id})" title="Klik untuk cari berita: ${c.lokasi}">
+        <td class="td-date">${fmtDate(c.tanggal)}</td>
+        <td>${c.provinsi}</td>
+        <td class="td-geo">${c.kabupaten}</td>
+        <td class="td-geo">${c.kecamatan}</td>
+        <td>
+          ${c.isNew ? '<span class="badge badge-new" style="margin-right:5px">Baru</span>' : ''}
+          ${c.isKLB ? '<span class="badge badge-klb" style="margin-right:5px">KLB</span>' : ''}
+          ${c.lokasi}
+        </td>
+        <td class="td-korban">${c.korban.toLocaleString('id-ID')}</td>
+        <td style="max-width:200px;font-size:12px;color:var(--muted)">${c.gejala}</td>
+        <td style="font-size:11px;color:var(--muted2)">${c.sumber}</td>
+      </tr>`).join('')}
+    </tbody>
+  </table></div>`;
+}
+
+// ─── OPEN NEWS IN NEW TAB ─────────────────────────────────────────────────
+function openNews(id) {
+  const c = CASES.find(x => x.id === id);
+  if (!c) return;
+  const q = `keracunan MBG ${c.lokasi} ${c.kabupaten} ${c.provinsi} ${c.tanggal.substring(0,7)}`;
+  window.open(`https://www.google.com/search?q=${encodeURIComponent(q)}&tbm=nws`, '_blank');
+}
+
+function newsUrl(c) {
+  const q = `keracunan MBG ${c.lokasi} ${c.kabupaten} ${c.provinsi} ${c.tanggal.substring(0,7)}`;
+  return `https://www.google.com/search?q=${encodeURIComponent(q)}&tbm=nws`;
+}
+
+// ─── MAP ──────────────────────────────────────────────────────────────────
+let _map = null;
+let _heatLayer = null;
+let _markersGroup = null;
+
+function initMap() {
+  if (!_map) {
+    _map = L.map('mapContainer', { zoomControl:true }).setView([-2.5, 118], 5);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution:'© <a href="https://www.openstreetmap.org/copyright" style="color:#555">OpenStreetMap</a>',
+      maxZoom:18
+    }).addTo(_map);
+  }
+  updateMap();
+}
+
+function updateMap() {
+  if (!_map) return;
+  if (_heatLayer) { _map.removeLayer(_heatLayer); _heatLayer = null; }
+  if (_markersGroup) { _map.removeLayer(_markersGroup); _markersGroup = null; }
+
+  const withCoords = filteredData.filter(c => c.lat && c.lng);
+  if (!withCoords.length) return;
+
+  const maxK = Math.max(...withCoords.map(c => c.korban));
+
+  // Heatmap layer
+  const heatData = withCoords.map(c => [c.lat, c.lng, Math.max(0.1, c.korban / maxK)]);
+  _heatLayer = L.heatLayer(heatData, {
+    radius:52, blur:38, maxZoom:9, max:1.0,
+    gradient:{0.2:'#4a9eff', 0.45:'#f5a623', 0.7:'#e3000f', 1.0:'#ff0000'}
+  }).addTo(_map);
+
+  // Circle markers
+  _markersGroup = L.layerGroup();
+  withCoords.forEach(c => {
+    const r = Math.max(7, Math.min(26, Math.sqrt(c.korban) * 1.1));
+    const marker = L.circleMarker([c.lat, c.lng], {
+      radius: r,
+      fillColor: c.isKLB ? '#f5a623' : '#e3000f',
+      color: c.isKLB ? '#a07000' : '#7a0008',
+      weight: 1.5,
+      opacity: 0.9,
+      fillOpacity: 0.55
+    });
+    marker.bindPopup(`
+      <b>${c.lokasi}</b>
+      <div class="pop-geo">${c.provinsi} › ${c.kabupaten}${c.kecamatan !== '-' ? ' › '+c.kecamatan : ''}</div>
+      <div class="pop-korban">⚠ ${c.korban.toLocaleString('id-ID')} korban</div>
+      <div class="pop-gejala">${c.gejala}</div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted)">${fmtDate(c.tanggal)} · ${c.sumber}</div>
+      <a class="pop-link" href="${newsUrl(c)}" target="_blank" rel="noopener">Cari Berita →</a>
+    `, { maxWidth:260 });
+    _markersGroup.addLayer(marker);
+  });
+  _markersGroup.addTo(_map);
+  setTimeout(() => _map.invalidateSize(), 50);
+}
+
+// ─── AI REFRESH ──────────────────────────────────────────────────────────
+function getLatestDate() {
+  return CASES.reduce((max, c) => c.tanggal > max ? c.tanggal : max, '2025-01-01');
+}
+
+async function refreshWithAI() {
+  const btn = document.getElementById('btnRefresh');
+  const icon = document.getElementById('refreshIcon');
+  const label = document.getElementById('refreshLabel');
+  const aiStatus = document.getElementById('aiStatus');
+
+  btn.disabled = true;
+  btn.classList.add('loading');
+  icon.textContent = '⟳';
+  label.textContent = 'Mencari berita…';
+  aiStatus.classList.add('show');
+
+  showToast('info', '🤖 AI Aktif', 'Mencari berita keracunan MBG terbaru dari internet…');
+
+  try {
+    const latestDate = getLatestDate();
+    const existingIds = CASES.map(c => `${c.tanggal}|${c.kabupaten}|${c.korban}`).join(', ');
+
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 2000,
+        tools: [{ type: "web_search_20250305", name: "web_search" }],
+        messages: [{
+          role: "user",
+          content: `Cari berita terbaru hari ini tentang kasus keracunan MBG (Makan Bergizi Gratis) di Indonesia. Tanggal hari ini: ${new Date().toLocaleDateString('id-ID', {day:'numeric',month:'long',year:'numeric'})}.
+
+Fokus pada kasus yang terjadi SETELAH tanggal ${latestDate}. Cari dengan keyword: "keracunan MBG", "keracunan Makan Bergizi Gratis", "siswa keracunan MBG 2026".
+
+Kembalikan HANYA JSON valid tanpa penjelasan, tanpa markdown, langsung JSON:
+{
+  "kasus_baru": [
+    {
+      "tanggal": "YYYY-MM-DD",
+      "provinsi": "nama provinsi lengkap",
+      "kabupaten": "nama kabupaten/kota",
+      "kecamatan": "nama kecamatan atau - jika tidak diketahui",
+      "lokasi": "nama sekolah atau tempat spesifik",
+      "korban": angka_integer,
+      "rawatInap": angka_integer_atau_0,
+      "gejala": "deskripsi gejala singkat",
+      "sumber": "nama media",
+      "isKLB": true_atau_false
+    }
+  ],
+  "ringkasan": "1-2 kalimat ringkasan situasi terbaru"
+}`
+        }]
+      })
+    });
+
+    if (!response.ok) throw new Error(`API error: ${response.status}`);
+    const data = await response.json();
+
+    // Extract text from all content blocks
+    const textContent = (data.content || [])
+      .filter(b => b.type === 'text')
+      .map(b => b.text)
+      .join('\n');
+
+    // Parse JSON from response
+    let parsed = null;
+    const jsonMatch = textContent.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      try { parsed = JSON.parse(jsonMatch[0]); } catch(e) {}
+    }
+
+    if (parsed && parsed.kasus_baru && Array.isArray(parsed.kasus_baru)) {
+      const newCases = parsed.kasus_baru.filter(nc => {
+        // Deduplicate by date+kabupaten
+        return !CASES.some(existing =>
+          existing.tanggal === nc.tanggal &&
+          existing.kabupaten?.toLowerCase() === nc.kabupaten?.toLowerCase()
+        );
+      });
+
+      if (newCases.length > 0) {
+        newCases.forEach(nc => {
+          CASES.unshift({
+            id: nextId++,
+            tanggal: nc.tanggal || new Date().toISOString().split('T')[0],
+            provinsi: nc.provinsi || '-',
+            kabupaten: nc.kabupaten || '-',
+            kecamatan: nc.kecamatan || '-',
+            lokasi: nc.lokasi || '-',
+            korban: parseInt(nc.korban) || 0,
+            rawatInap: parseInt(nc.rawatInap) || 0,
+            gejala: nc.gejala || '-',
+            sumber: nc.sumber || 'AI Search',
+            isNew: true,
+            isKLB: !!nc.isKLB
+          });
+        });
+
+        // Rebuild geo dropdowns
+        rebuildGeo();
+        applyFilters();
+        showToast('success', `✅ ${newCases.length} Kasus Baru Ditemukan`, parsed.ringkasan || 'Data berhasil diperbarui dari pencarian berita terkini.');
+      } else {
+        showToast('info', '✓ Data Sudah Terkini', parsed.ringkasan || 'Tidak ada kasus baru yang ditemukan setelah pencarian berita terkini.');
+        applyFilters();
+      }
+    } else {
+      showToast('info', '✓ Pencarian Selesai', 'AI tidak menemukan kasus baru yang dapat diverifikasi saat ini.');
+    }
+
+  } catch (err) {
+    console.error(err);
+    showToast('error', '⚠ Gagal Memperbarui', `Terjadi kesalahan: ${err.message}. Coba lagi beberapa saat.`);
+  } finally {
+    btn.disabled = false;
+    btn.classList.remove('loading');
+    icon.textContent = '⟳';
+    label.textContent = 'Perbarui dengan AI';
+    aiStatus.classList.remove('show');
+  }
+}
+
+function rebuildGeo() {
+  const provinsiSel = document.getElementById('filterProvinsi');
+  const savedProv = provinsiSel.value;
+  provinsiSel.innerHTML = '<option value="">Semua Provinsi</option>';
+  const unique = [...new Set(CASES.map(c => c.provinsi))].sort();
+  unique.forEach(p => {
+    const o = document.createElement('option');
+    o.value = p; o.textContent = p;
+    provinsiSel.appendChild(o);
+  });
+  if (savedProv) provinsiSel.value = savedProv;
+}
+
+// ─── TOAST ───────────────────────────────────────────────────────────────
+function showToast(type, title, msg) {
+  const container = document.getElementById('toastContainer');
+  const icons = { success:'✅', error:'❌', info:'ℹ️' };
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.innerHTML = `<div class="toast-icon">${icons[type]||'•'}</div><div class="toast-body"><div class="toast-title">${title}</div><div class="toast-msg">${msg}</div></div>`;
+  container.appendChild(toast);
+  setTimeout(() => {
+    toast.style.animation = 'slideIn .3s ease reverse both';
+    setTimeout(() => toast.remove(), 350);
+  }, 5000);
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('dateTo').max = new Date().toISOString().split('T')[0];
+  buildGeoOptions();
+  currentView = 'card';
+  applyFilters();
+  initMap();
+});
+</script>
+</body>
+</html>

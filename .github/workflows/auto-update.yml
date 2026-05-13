@@ -1,0 +1,9 @@
+# ... (setelah step Setup Python)
+      - name: Install Dependencies
+        run: pip install -r requirements.txt
+
+      - name: Jalankan Script Scraper Python
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python updater.py
+      # ... (lanjut ke step git commit)
