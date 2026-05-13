@@ -444,74 +444,42 @@ footer { border-top:1px solid var(--border); padding:16px 28px; display:flex; ju
 
 <div class="toast-container" id="toastContainer"></div>
 
-<script>
-// ─── KOORDINAT GEO (Untuk Heat Map) ───────────────────────────────────────
-const GEO_COORDS = {
-  "Sukoharjo": [-7.6783, 110.8288],
-  "Empat Lawang": [-3.6333, 102.9833],
-  "PALI": [-3.2205, 103.8542],
-  "Lampung Utara": [-4.8197, 104.8080],
-  "Bandar Lampung": [-5.4500, 105.2667],
-  "Lampung Timur": [-5.1054, 105.6792],
-  "Wonogiri": [-7.8920, 110.9272],
-  "Banggai Kepulauan": [-1.4316, 123.0560],
-  "Kota Tual": [-5.6366, 132.7483],
-  "Bandung Barat": [-6.8375, 107.5133],
-  "Sumedang": [-6.8588, 107.9206],
-  "Bogor": [-6.5971, 106.7932],
-  "Ciamis": [-7.3274, 108.3516],
-  "Toba": [-2.3361, 99.1171],
-  "Nias Utara": [1.1442, 97.3541],
-  "Lampung Selatan": [-5.5782, 105.5947],
-  "Dairi": [2.7233, 98.3006],
-  "Nias Selatan": [0.6035, 97.8398],
-  "Aceh Selatan": [3.1678, 97.4338],
-  "Lumajang": [-8.1333, 113.2228],
-  "Surabaya": [-7.2504, 112.7688],
-  // Fallback Provinsi jika Kabupaten tidak terdaftar di atas:
-  "Jawa Tengah": [-7.1509, 110.1402],
-  "Jawa Barat": [-6.9147, 107.6098],
-  "Jawa Timur": [-7.2504, 112.7688],
-  "Sumatera Selatan": [-3.3194, 104.9147],
-  "Lampung": [-4.5585, 105.4068],
-  "Sulawesi Tengah": [-1.4300, 121.4456],
-  "Maluku": [-3.2384, 130.1452],
-  "Sumatera Utara": [2.1153, 99.5450],
-  "Aceh": [4.6951, 96.7493]
-};
 
-// ─── DATASET ──────────────────────────────────────────────────────────────
-let CASES = [
-  { id:1, tanggal:"2025-01-16", provinsi:"Jawa Tengah", kabupaten:"Sukoharjo", kecamatan:"Sukoharjo", kelurahan:"-", lokasi:"SD Negeri 3 Dukuh", korban:40, rawatInap:0, gejala:"Mual, muntah (ayam marinasi)", sumber:"Kepresidenan / Detik.com", isNew:false, isKLB:false },
-  { id:2, tanggal:"2025-02-18", provinsi:"Sumatera Selatan", kabupaten:"Empat Lawang", kecamatan:"Tebing Tinggi", kelurahan:"-", lokasi:"SPPG Tanjungkupang", korban:8, rawatInap:0, gejala:"Gangguan kesehatan", sumber:"BGN", isNew:false, isKLB:false },
-  { id:3, tanggal:"2025-05-05", provinsi:"Sumatera Selatan", kabupaten:"PALI", kecamatan:"Talang Ubi", kelurahan:"-", lokasi:"SPPG Handayani Mulya", korban:12, rawatInap:0, gejala:"Dugaan keracunan", sumber:"BGN", isNew:false, isKLB:false },
-  { id:4, tanggal:"2025-07-15", provinsi:"Lampung", kabupaten:"Lampung Utara", kecamatan:"-", kelurahan:"-", lokasi:"SD Negeri, Lampung Utara", korban:16, rawatInap:0, gejala:"Keracunan setelah santap MBG", sumber:"Cakra Lampung", isNew:false, isKLB:false },
-  { id:5, tanggal:"2025-08-12", provinsi:"Lampung", kabupaten:"Bandar Lampung", kecamatan:"-", kelurahan:"-", lokasi:"Sekolah, Lampung", korban:18, rawatInap:0, gejala:"Mual, lemas usai konsumsi lele", sumber:"Liputan6", isNew:false, isKLB:false },
-  { id:6, tanggal:"2025-08-28", provinsi:"Lampung", kabupaten:"Lampung Timur", kecamatan:"-", kelurahan:"-", lokasi:"SMP, Lampung Timur", korban:40, rawatInap:31, gejala:"Keracunan, 31 rawat inap", sumber:"iNews Lampung", isNew:false, isKLB:false },
-  { id:7, tanggal:"2025-08-30", provinsi:"Lampung", kabupaten:"Lampung Utara", kecamatan:"-", kelurahan:"-", lokasi:"Sekolah, Lampung Utara", korban:16, rawatInap:0, gejala:"Keracunan MBG berulang", sumber:"Detik Sumbagsel", isNew:false, isKLB:false },
-  { id:8, tanggal:"2025-09-12", provinsi:"Jawa Tengah", kabupaten:"Wonogiri", kecamatan:"Wonogiri Kota", kelurahan:"-", lokasi:"MIN Wonogiri", korban:110, rawatInap:0, gejala:"Mual, diare setelah santap MBG", sumber:"JOGLOSEMAR News", isNew:false, isKLB:false },
-  { id:9, tanggal:"2025-09-17", provinsi:"Sulawesi Tengah", kabupaten:"Banggai Kepulauan", kecamatan:"Salakan", kelurahan:"-", lokasi:"RS Trikora Salakan", korban:251, rawatInap:78, gejala:"Keracunan massal, 78 rawat intensif", sumber:"Tribunnews", isNew:false, isKLB:false },
-  { id:10, tanggal:"2025-09-18", provinsi:"Maluku", kabupaten:"Kota Tual", kecamatan:"Tual", kelurahan:"-", lokasi:"SDN 19 Kota Tual", korban:18, rawatInap:10, gejala:"Keracunan usai santap MBG di sekolah", sumber:"Tribun Manado", isNew:false, isKLB:false },
-  { id:11, tanggal:"2025-09-26", provinsi:"Jawa Barat", kabupaten:"Bandung Barat", kecamatan:"Cipongkor", kelurahan:"-", lokasi:"Berbagai sekolah, Cipongkor KBB", korban:1333, rawatInap:0, gejala:"Keracunan bakteri massal — terbesar tunggal", sumber:"Kompas / Detik", isNew:false, isKLB:false },
-  { id:12, tanggal:"2025-09-26", provinsi:"Jawa Barat", kabupaten:"Sumedang", kecamatan:"-", kelurahan:"-", lokasi:"Berbagai sekolah, Sumedang", korban:164, rawatInap:0, gejala:"Keracunan MBG massal", sumber:"Detik.com", isNew:false, isKLB:false },
-  { id:13, tanggal:"2025-09-26", provinsi:"Jawa Barat", kabupaten:"Bogor", kecamatan:"Jonggol", kelurahan:"-", lokasi:"SMP, Jonggol, Bogor", korban:4, rawatInap:0, gejala:"Dugaan keracunan menu MBG", sumber:"Detiknews", isNew:false, isKLB:false },
-  { id:14, tanggal:"2025-09-26", provinsi:"Lampung", kabupaten:"Bandar Lampung", kecamatan:"Way Lunik", kelurahan:"-", lokasi:"SMAN 6 Bandar Lampung", korban:300, rawatInap:0, gejala:"Keracunan massal, dapur Way Lunik disetop", sumber:"Liputan6", isNew:false, isKLB:false },
-  { id:15, tanggal:"2025-09-29", provinsi:"Jawa Barat", kabupaten:"Ciamis", kecamatan:"Pamarican", kelurahan:"-", lokasi:"SMPN 4 Pamarican, Ciamis", korban:52, rawatInap:0, gejala:"Keracunan (ayam dan labu)", sumber:"Tribunnews", isNew:false, isKLB:false },
-  { id:16, tanggal:"2025-10-01", provinsi:"Jawa Barat", kabupaten:"Bogor", kecamatan:"Megamendung", kelurahan:"-", lokasi:"SDN Pasir Angin 02, Bogor", korban:107, rawatInap:3, gejala:"107 siswa sakit, 3 muntah", sumber:"Detikjabar", isNew:false, isKLB:false },
-  { id:17, tanggal:"2025-10-01", provinsi:"Lampung", kabupaten:"Lampung Utara", kecamatan:"-", kelurahan:"-", lokasi:"SMA, Lampung Utara", korban:52, rawatInap:0, gejala:"Keracunan (menu ayam crispy MBG)", sumber:"Detik Sumbagsel", isNew:false, isKLB:false },
-  { id:18, tanggal:"2025-10-09", provinsi:"Jawa Tengah", kabupaten:"Wonogiri", kecamatan:"Slogohimo", kelurahan:"-", lokasi:"Sekolah & Pesantren, Slogohimo", korban:200, rawatInap:0, gejala:"Keracunan massal (ratusan siswa + santri)", sumber:"Detikjateng", isNew:false, isKLB:false },
-  { id:19, tanggal:"2025-10-17", provinsi:"Jawa Barat", kabupaten:"Bogor", kecamatan:"Gunung Putri", kelurahan:"-", lokasi:"SDN Ciangsana 02, Bogor", korban:7, rawatInap:0, gejala:"Mual, muntah usai konsumsi MBG", sumber:"Kompas.com", isNew:false, isKLB:false },
-  { id:20, tanggal:"2025-10-20", provinsi:"Sumatera Utara", kabupaten:"Toba", kecamatan:"-", kelurahan:"-", lokasi:"Berbagai sekolah, Kab. Toba", korban:121, rawatInap:32, gejala:"Dugaan keracunan MBG, 32 dirawat RS", sumber:"Metro Daily", isNew:false, isKLB:false },
-  { id:21, tanggal:"2025-10-31", provinsi:"Sumatera Utara", kabupaten:"Nias Utara", kecamatan:"-", kelurahan:"-", lokasi:"SD, Nias Utara", korban:30, rawatInap:0, gejala:"Sakit perut, sesak napas (susu MBG)", sumber:"Wahana News Nias", isNew:false, isKLB:false },
-  { id:22, tanggal:"2025-12-04", provinsi:"Lampung", kabupaten:"Lampung Selatan", kecamatan:"Kalianda", kelurahan:"-", lokasi:"SMPN Kalianda, Lamsel", korban:40, rawatInap:0, gejala:"Dugaan keracunan makanan MBG", sumber:"Dinkes Lamsel", isNew:false, isKLB:false },
-  { id:23, tanggal:"2026-01-14", provinsi:"Jawa Tengah", kabupaten:"Wonogiri", kecamatan:"Jatisrono", kelurahan:"-", lokasi:"Berbagai sekolah, Jatisrono", korban:206, rawatInap:0, gejala:"Keracunan massal MBG", sumber:"Suara Merdeka", isNew:false, isKLB:false },
-  { id:24, tanggal:"2026-02-12", provinsi:"Sumatera Utara", kabupaten:"Dairi", kecamatan:"-", kelurahan:"-", lokasi:"Berbagai sekolah, Kab. Dairi", korban:271, rawatInap:0, gejala:"Keracunan MBG (terus bertambah)", sumber:"Mistar.id", isNew:false, isKLB:false },
-  { id:25, tanggal:"2026-02-15", provinsi:"Lampung", kabupaten:"Bandar Lampung", kecamatan:"Kemiling", kelurahan:"-", lokasi:"Berbagai sekolah, Kemiling", korban:300, rawatInap:0, gejala:"Keracunan massal MBG", sumber:"VIVA Lampung", isNew:false, isKLB:false },
-  { id:26, tanggal:"2026-02-24", provinsi:"Sumatera Utara", kabupaten:"Nias Selatan", kecamatan:"Kepulauan Batu", kelurahan:"-", lokasi:"SDN 071123 Kepulauan Batu", korban:35, rawatInap:0, gejala:"Dugaan keracunan MBG", sumber:"Komunitas Today", isNew:false, isKLB:false },
-  { id:27, tanggal:"2026-02-28", provinsi:"Aceh", kabupaten:"Aceh Selatan", kecamatan:"-", kelurahan:"-", lokasi:"Wilayah Aceh Selatan", korban:120, rawatInap:0, gejala:"KLB keracunan pangan MBG ditetapkan Dinkes", sumber:"Merdeka.com", isNew:false, isKLB:true },
-  { id:28, tanggal:"2026-05-08", provinsi:"Jawa Timur", kabupaten:"Lumajang", kecamatan:"Jatiroto", kelurahan:"-", lokasi:"SMKN 1 Jatiroto, Lumajang", korban:200, rawatInap:0, gejala:"Ratusan siswa & guru alami diare, diselidiki", sumber:"RI News Portal", isNew:false, isKLB:false },
-  { id:29, tanggal:"2026-05-12", provinsi:"Jawa Timur", kabupaten:"Surabaya", kecamatan:"-", kelurahan:"-", lokasi:"Berbagai sekolah, Surabaya", korban:200, rawatInap:0, gejala:"Keracunan MBG — walimurid minta ganti bekal", sumber:"Kompas.com", isNew:false, isKLB:false },
-];
+<script>
+// Fungsi Pintar: Cari koordinat otomatis (Auto-Geocoding)
+async function getCoordinates(cityName) {
+    // 1. Cek dulu di data.js manual kita
+    if (GEO_COORDS[cityName]) return GEO_COORDS[cityName];
+
+    // 2. Jika tidak ada, tanya ke OpenStreetMap (Nominatim)
+    try {
+        console.log(`Mencari koordinat otomatis untuk: ${cityName}...`);
+        const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${cityName},Indonesia`);
+        const data = await response.json();
+        
+        if (data && data.length > 0) {
+            const lat = parseFloat(data[0].lat);
+            const lon = parseFloat(data[0].lon);
+            // Simpan ke memory agar tidak tanya-tanya terus
+            GEO_COORDS[cityName] = [lat, lon];
+            return [lat, lon];
+        }
+    } catch (error) {
+        console.error("Gagal Geocoding:", error);
+    }
+    return [-7.2504, 112.7688]; // Default ke Surabaya jika gagal total
+}
+
+// Saat render peta, gunakan fungsi async di atas
+async function renderMap() {
+    for (let caseData of CASES) {
+        const coords = await getCoordinates(caseData.kabupaten);
+        // Tambahkan marker ke peta seperti biasa menggunakan 'coords'
+        L.circle(coords, { color: 'red', radius: 5000 }).addTo(map);
+    }
+}
+</script>
+
 
 // ─── STATE ────────────────────────────────────────────────────────────────
 let currentView = 'card';

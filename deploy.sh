@@ -18,7 +18,7 @@ echo -e "${YELLOW}Menyiapkan struktur folder...${NC}"
 mkdir -p .github/workflows
 
 # 2. Verifikasi file-file utama
-FILES=("index.html" "updater.py" "requirements.txt" ".github/workflows/auto-update.yml")
+FILES=("index.html" "data.js" "updater.py" "requirements.txt" ".github/workflows/auto-update.yml")
 for file in "${FILES[@]}"; do
     if [ ! -f "$file" ]; then
         echo -e "${RED}Error: File $file tidak ditemukan!${NC}"

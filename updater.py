@@ -110,21 +110,18 @@ try:
   }},"""
         kasus_baru_js += kasus_js
 
-    # 5. Suntikkan ke dalam index.html
-    with open('index.html', 'r', encoding='utf-8') as file:
-        html_content = file.read()
-    
-    target_string = "let CASES = ["
-    insert_position = html_content.find(target_string) + len(target_string)
-    
-    if insert_position > len(target_string): # Memastikan target ditemukan
-        new_html = html_content[:insert_position] + kasus_baru_js + html_content[insert_position:]
-        
-        with open('index.html', 'w', encoding='utf-8') as file:
-            file.write(new_html)
-        print("File index.html berhasil diperbarui dengan data dari Gemini!")
-    else:
-        print("Error: Tidak menemukan 'let CASES = [' di dalam index.html")
+ # ... (bagian atas script tetap sama) ...
 
-except Exception as e:
-    print(f"Terjadi kesalahan saat memproses dengan Gemini: {e}")
+# 5. Suntikkan ke dalam data.js (BUKAN index.html)
+with open('data.js', 'r', encoding='utf-8') as file:
+    content = file.read()
+
+target_string = "let CASES = ["
+insert_position = content.find(target_string) + len(target_string)
+
+if insert_position > len(target_string):
+    new_content = content[:insert_position] + kasus_baru_js + content[insert_position:]
+    
+    with open('data.js', 'w', encoding='utf-8') as file:
+        file.write(new_content)
+    print("Database data.js berhasil diperbarui!")
