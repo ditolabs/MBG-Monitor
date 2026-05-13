@@ -1,4 +1,26 @@
-# ... (setelah step Setup Python)
+name: Auto Update Data MBG
+
+on:
+  schedule:
+    # Berjalan otomatis setiap jam 23:00 UTC (Sama dengan Jam 06:00 WIB Pagi)
+    - cron: '0 23 * * *'
+  
+  # Tombol ini memungkinkan Anda memicu script secara manual lewat web GitHub
+  workflow_dispatch: 
+
+jobs:
+  update-data:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
       - name: Install Dependencies
         run: pip install -r requirements.txt
 
@@ -6,4 +28,11 @@
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: python updater.py
-      # ... (lanjut ke step git commit)
+
+      - name: Commit dan Push Perubahan ke GitHub
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "🤖 Auto-update data kasus baru dari berita" || echo "Tidak ada data baru untuk di-commit"
+          git push
