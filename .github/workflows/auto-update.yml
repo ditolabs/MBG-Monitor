@@ -2,22 +2,21 @@ name: Auto Update Data MBG
 
 on:
   schedule:
-    # Berjalan otomatis setiap jam 06:00 WIB Pagi
     - cron: '0 23 * * *'
-  
-  # Memungkinkan jalankan manual lewat tombol "Run Workflow" di GitHub
   workflow_dispatch: 
+
+# Tambahkan bagian ini untuk memaksa penggunaan Node.js 24
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   update-data:
     runs-on: ubuntu-latest
 
     steps:
-      # Menggunakan versi v4 agar mendukung Node.js terbaru
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      # Menggunakan versi v5 agar mendukung Node.js terbaru
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
