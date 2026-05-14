@@ -6,380 +6,266 @@
 <title>MBG Monitor — Pantau Kasus Keracunan Makan Bergizi Gratis</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=IBM+Plex+Mono:wght@400;600&family=Noto+Sans:wght@400;500;700&display=swap" rel="stylesheet">
-
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<!-- Dataset — digenerate otomatis oleh GitHub Actions -->
+<script src="data.js"></script>
 <style>
 :root {
-  --bg: #0c0c0e;
-  --surface: #131316;
-  --surface2: #1a1a1f;
-  --surface3: #222228;
-  --border: #2a2a32;
-  --border2: #363640;
-  --red: #e3000f;
-  --red-dim: #7a0008;
-  --red-glow: rgba(227,0,15,0.12);
-  --amber: #f5a623;
-  --green: #00d47e;
-  --blue: #4a9eff;
-  --text: #e8e8ec;
-  --muted: #6b6b7b;
-  --muted2: #4a4a58;
+  --bg:#0c0c0e; --surface:#131316; --surface2:#1a1a1f; --surface3:#222228;
+  --border:#2a2a32; --border2:#363640;
+  --red:#e3000f; --red-dim:#7a0008; --red-glow:rgba(227,0,15,0.12);
+  --amber:#f5a623; --green:#00d47e; --blue:#4a9eff;
+  --text:#e8e8ec; --muted:#6b6b7b; --muted2:#4a4a58;
 }
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { scroll-behavior: smooth; }
-body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: 'Noto Sans', sans-serif;
-  font-size: 14px;
-  line-height: 1.6;
-  overflow-x: hidden;
-  min-height: 100vh;
-}
-body::before {
-  content: '';
-  position: fixed; inset: 0;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
-  opacity: 0.022; pointer-events: none; z-index: 9999;
-}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:'Noto Sans',sans-serif;font-size:14px;line-height:1.6;overflow-x:hidden;min-height:100vh}
+body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");opacity:.022;pointer-events:none;z-index:9999}
 
-/* ALERT STRIP */
-.alert-strip {
-  background: var(--red);
-  color: #fff;
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 11px;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-  padding: 7px 16px;
-  text-align: center;
-  animation: pulse-strip 3s ease-in-out infinite;
-}
-@keyframes pulse-strip { 0%,100%{opacity:1} 50%{opacity:.82} }
+.alert-strip{background:var(--red);color:#fff;font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.07em;text-transform:uppercase;padding:7px 16px;text-align:center;animation:pulse-strip 3s ease-in-out infinite}
+@keyframes pulse-strip{0%,100%{opacity:1}50%{opacity:.82}}
 
-/* HEADER */
-header {
-  border-bottom: 1px solid var(--border);
-  padding: 22px 28px 18px;
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-.logo-eyebrow { font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:.18em; text-transform:uppercase; color:var(--red); margin-bottom:4px; }
-.logo-title { font-family:'Playfair Display',serif; font-size:clamp(24px,4vw,40px); font-weight:900; line-height:1; color:#fff; letter-spacing:-.02em; }
-.logo-title span { color:var(--red); }
-.logo-sub { margin-top:5px; font-size:12px; color:var(--muted); }
-.header-right { display:flex; flex-direction:column; align-items:flex-end; gap:8px; }
-.live-badge { display:inline-flex; align-items:center; gap:6px; background:var(--surface2); border:1px solid var(--border); border-radius:4px; padding:5px 11px; font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--muted); }
-.live-dot { width:7px; height:7px; border-radius:50%; background:var(--green); animation:blink 1.4s ease-in-out infinite; }
-@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.25} }
+header{border-bottom:1px solid var(--border);padding:22px 28px 18px;display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.logo-eyebrow{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--red);margin-bottom:4px}
+.logo-title{font-family:'Playfair Display',serif;font-size:clamp(24px,4vw,40px);font-weight:900;line-height:1;color:#fff;letter-spacing:-.02em}
+.logo-title span{color:var(--red)}
+.logo-sub{margin-top:5px;font-size:12px;color:var(--muted)}
+.header-right{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.live-badge{display:inline-flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:5px 11px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted)}
+.live-dot{width:7px;height:7px;border-radius:50%;background:var(--green);animation:blink 1.4s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+.last-refresh{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted2);text-align:right}
+.next-refresh-bar{height:2px;background:var(--surface3);border-radius:1px;width:180px;overflow:hidden;margin-top:2px}
+.next-refresh-fill{height:100%;background:var(--green);border-radius:1px;transition:width 1s linear}
 
-/* REFRESH BUTTON */
-.btn-refresh {
-  display:inline-flex; align-items:center; gap:7px;
-  background: linear-gradient(135deg, var(--red-dim), var(--red));
-  border:none; border-radius:4px;
-  padding:8px 16px;
-  font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:.07em;
-  color:#fff; cursor:pointer; transition:opacity .2s, transform .15s;
-  text-transform:uppercase;
-}
-.btn-refresh:hover { opacity:.88; transform:translateY(-1px); }
-.btn-refresh:active { transform:translateY(0); }
-.btn-refresh:disabled { opacity:.45; cursor:not-allowed; transform:none; }
-.btn-refresh .spin { display:inline-block; }
-.btn-refresh.loading .spin { animation:spin .7s linear infinite; }
-@keyframes spin { to{transform:rotate(360deg)} }
+/* MAP */
+#mapContainer{width:100%;height:480px;border-bottom:1px solid var(--border)}
+.leaflet-tile{filter:invert(100%) hue-rotate(180deg) brightness(.88) contrast(.88) saturate(.6)}
+.leaflet-container{background:#0c0c0e !important;font-family:'Noto Sans',sans-serif}
+.leaflet-popup-content-wrapper{background:var(--surface2) !important;color:var(--text) !important;border:1px solid var(--border2) !important;border-radius:4px !important;box-shadow:0 4px 20px rgba(0,0,0,.5) !important}
+.leaflet-popup-tip{background:var(--surface2) !important}
+.leaflet-popup-content{font-size:13px;line-height:1.55;margin:12px 14px}
+.leaflet-popup-content b{color:#fff;font-size:14px}
+.pop-geo{color:var(--muted);font-size:11px;font-family:'IBM Plex Mono',monospace;margin:4px 0 6px}
+.pop-korban{color:var(--red);font-family:'IBM Plex Mono',monospace;font-weight:600}
+.pop-gejala{color:var(--muted);font-size:11px;margin:5px 0}
+.pop-link{display:inline-block;margin-top:8px;background:var(--red-dim);color:#fff !important;text-decoration:none;font-size:11px;font-family:'IBM Plex Mono',monospace;padding:4px 10px;border-radius:3px}
+.pop-link:hover{background:var(--red)}
+.leaflet-control-attribution{background:rgba(12,12,14,.7) !important;color:var(--muted2) !important;font-size:9px !important}
+.leaflet-control-zoom a{background:var(--surface2) !important;color:var(--text) !important;border-color:var(--border2) !important}
+
+/* ANALYTICS */
+.analytics-wrap{background:var(--surface);border-bottom:1px solid var(--border)}
+.analytics-header{display:flex;align-items:center;justify-content:space-between;padding:12px 24px 0;cursor:pointer;user-select:none}
+.analytics-header-title{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:8px}
+.analytics-toggle-icon{transition:transform .25s}
+.analytics-inner{display:grid;grid-template-columns:1fr 340px;overflow:hidden;transition:max-height .35s ease;max-height:340px}
+.analytics-inner.collapsed{max-height:0}
+.chart-panel{padding:16px 24px 20px;border-right:1px solid var(--border)}
+.leaderboard-panel{padding:16px 20px 20px;overflow-y:auto}
+.analytics-panel-title{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:12px;display:flex;align-items:center;gap:6px}
+.chart-canvas-wrap{position:relative;height:220px}
+.lb-row{display:grid;grid-template-columns:18px 1fr auto;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s;border-radius:2px}
+.lb-row:last-child{border-bottom:none}
+.lb-row:hover{background:var(--surface2);padding-left:4px}
+.lb-rank{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted2);text-align:center;font-weight:600}
+.lb-rank.top3{color:var(--amber)}
+.lb-name{font-size:12px;font-weight:700;color:var(--text);margin-bottom:3px}
+.lb-bar-wrap{background:var(--surface2);border-radius:2px;height:3px}
+.lb-bar{height:100%;background:linear-gradient(90deg,var(--red-dim),var(--red));border-radius:2px;transition:width .6s cubic-bezier(.16,1,.3,1)}
+.lb-nums{text-align:right;font-family:'IBM Plex Mono',monospace;font-size:10px;white-space:nowrap}
+.lb-korban{color:var(--amber);font-weight:600}
+.lb-kasus{color:var(--muted2);font-size:9px;margin-top:2px}
 
 /* LAYOUT */
-.app-body { display:grid; grid-template-columns:280px 1fr; min-height:calc(100vh - 130px); }
+.app-body{display:grid;grid-template-columns:280px 1fr;min-height:calc(100vh - 130px)}
+.sidebar{border-right:1px solid var(--border);padding:20px 16px;background:var(--surface);position:sticky;top:0;height:100vh;overflow-y:auto}
+.sidebar::-webkit-scrollbar{width:4px}
+.sidebar::-webkit-scrollbar-track{background:transparent}
+.sidebar::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+.filter-section{margin-bottom:24px}
+.filter-label{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;display:block}
+.filter-select,.filter-input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:3px;color:var(--text);font-family:'Noto Sans',sans-serif;font-size:13px;padding:8px 10px;outline:none;transition:border-color .2s;appearance:none;-webkit-appearance:none}
+.filter-select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b6b7b' d='M6 8L1 3h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px}
+.filter-select:focus,.filter-input:focus{border-color:var(--red-dim)}
+.filter-select option{background:var(--surface2)}
+.date-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.filter-reset{width:100%;background:transparent;border:1px solid var(--border);color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:7px;border-radius:3px;cursor:pointer;transition:border-color .2s,color .2s;margin-top:4px}
+.filter-reset:hover{border-color:var(--red-dim);color:var(--text)}
+.filter-divider{height:1px;background:var(--border);margin:20px 0}
+.mini-stats{display:flex;flex-direction:column;gap:8px}
+.mini-stat{background:var(--surface2);border:1px solid var(--border);border-radius:3px;padding:10px 12px}
+.mini-stat-label{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.mini-stat-val{font-family:'Playfair Display',serif;font-size:22px;font-weight:700;line-height:1}
+.mini-stat-val.red{color:var(--red)}
+.mini-stat-val.amber{color:var(--amber)}
 
-/* SIDEBAR */
-.sidebar {
-  border-right:1px solid var(--border);
-  padding:20px 16px;
-  background:var(--surface);
-  position:sticky; top:0; height:100vh; overflow-y:auto;
+.main-panel{padding:20px 24px;overflow-y:auto}
+.toolbar{display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+.search-wrap{flex:1;min-width:200px;position:relative}
+.search-wrap input{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:13px;padding:8px 10px 8px 34px;outline:none;font-family:'Noto Sans',sans-serif;transition:border-color .2s}
+.search-wrap input:focus{border-color:var(--red-dim)}
+.search-wrap .si{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:14px;pointer-events:none}
+.result-count{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);white-space:nowrap}
+.btn-export{display:inline-flex;align-items:center;gap:5px;background:var(--surface2);border:1px solid var(--border);border-radius:3px;color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;padding:7px 11px;cursor:pointer;transition:border-color .2s,color .2s;white-space:nowrap}
+.btn-export:hover{border-color:var(--green);color:var(--green)}
+.view-toggle{display:flex;border:1px solid var(--border);border-radius:3px;overflow:hidden}
+.view-btn{background:var(--surface);border:none;color:var(--muted);padding:7px 12px;cursor:pointer;font-size:14px;transition:background .15s,color .15s}
+.view-btn.active{background:var(--surface3);color:var(--text)}
+
+.cases-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}
+.case-card{background:var(--surface);border:1px solid var(--border);border-radius:3px;padding:16px 18px;transition:border-color .2s,background .2s;position:relative;overflow:hidden;cursor:pointer;animation:fadeIn .3s ease both}
+.case-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--red);transform:scaleX(0);transform-origin:left;transition:transform .25s}
+.case-card:hover{border-color:var(--border2);background:var(--surface2)}
+.case-card:hover::before{transform:scaleX(1)}
+.case-card.new-case{border-color:var(--red-dim)}
+.case-card.new-case::before{transform:scaleX(1)}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.card-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;gap:8px}
+.card-date{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--red);letter-spacing:.07em}
+.badge{display:inline-block;border-radius:2px;padding:2px 7px;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.08em;text-transform:uppercase}
+.badge-new{background:var(--red-glow);border:1px solid var(--red-dim);color:var(--red)}
+.badge-klb{background:rgba(245,166,35,.12);border:1px solid rgba(245,166,35,.3);color:var(--amber)}
+.card-lokasi{font-weight:700;font-size:14px;color:#fff;margin-bottom:4px;line-height:1.3}
+.card-geo{font-size:12px;color:var(--muted);margin-bottom:10px;display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+.geo-sep{color:var(--muted2)}
+.card-gejala{font-size:12px;color:var(--muted);margin-bottom:12px}
+.card-bottom{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px}
+.korban-chip{display:inline-flex;align-items:center;gap:5px;background:var(--red-glow);border:1px solid var(--red-dim);border-radius:3px;padding:3px 10px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--red);font-weight:600}
+.rawat-chip{display:inline-flex;align-items:center;gap:4px;background:rgba(74,158,255,.08);border:1px solid rgba(74,158,255,.2);border-radius:3px;padding:3px 8px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--blue)}
+.sumber-chip{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted2)}
+
+.cases-table{width:100%;border-collapse:collapse;font-size:13px}
+.cases-table th{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);text-align:left;padding:9px 12px;border-bottom:1px solid var(--border);background:var(--surface);cursor:pointer;user-select:none;white-space:nowrap}
+.cases-table th:hover{color:var(--text)}
+.cases-table th.sorted .sort-icon{color:var(--red)}
+.cases-table td{padding:10px 12px;border-bottom:1px solid var(--border);background:var(--surface);vertical-align:top}
+.cases-table tbody tr{cursor:pointer}
+.cases-table tbody tr:hover td{background:var(--surface2)}
+.td-date{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--red);white-space:nowrap}
+.td-korban{font-family:'IBM Plex Mono',monospace;font-weight:600;color:var(--amber)}
+.td-geo{color:var(--muted);font-size:12px}
+
+.empty-state{text-align:center;padding:60px 20px;color:var(--muted)}
+.empty-state .icon{font-size:40px;margin-bottom:12px}
+
+/* NEW DATA BANNER */
+.new-data-banner{display:none;background:rgba(0,212,126,.08);border:1px solid rgba(0,212,126,.25);border-radius:4px;padding:10px 16px;margin-bottom:14px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--green);align-items:center;gap:10px;cursor:pointer}
+.new-data-banner.show{display:flex}
+.new-data-banner:hover{background:rgba(0,212,126,.13)}
+
+.toast-container{position:fixed;top:16px;right:16px;z-index:9998;display:flex;flex-direction:column;gap:8px}
+.toast{background:var(--surface2);border:1px solid var(--border2);border-radius:4px;padding:12px 16px;max-width:320px;font-size:13px;box-shadow:0 4px 24px rgba(0,0,0,.4);animation:slideIn .3s ease both;display:flex;align-items:flex-start;gap:10px}
+.toast.success{border-left:3px solid var(--green)}
+.toast.error{border-left:3px solid var(--red)}
+.toast.info{border-left:3px solid var(--blue)}
+.toast-icon{font-size:16px;flex-shrink:0;margin-top:1px}
+.toast-title{font-weight:700;color:#fff;margin-bottom:3px}
+.toast-msg{font-size:12px;color:var(--muted);line-height:1.5}
+@keyframes slideIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:none}}
+
+footer{border-top:1px solid var(--border);padding:16px 28px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted)}
+
+@media(max-width:900px){
+  .analytics-inner{grid-template-columns:1fr}
+  .chart-panel{border-right:none;border-bottom:1px solid var(--border)}
 }
-.sidebar::-webkit-scrollbar { width:4px; }
-.sidebar::-webkit-scrollbar-track { background:transparent; }
-.sidebar::-webkit-scrollbar-thumb { background:var(--border2); border-radius:2px; }
-.filter-section { margin-bottom:24px; }
-.filter-label {
-  font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:.14em;
-  text-transform:uppercase; color:var(--muted); margin-bottom:8px; display:block;
-}
-.filter-select, .filter-input {
-  width:100%; background:var(--surface2); border:1px solid var(--border);
-  border-radius:3px; color:var(--text); font-family:'Noto Sans',sans-serif;
-  font-size:13px; padding:8px 10px; outline:none; transition:border-color .2s;
-  appearance:none; -webkit-appearance:none;
-}
-.filter-select { background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b6b7b' d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 10px center; padding-right:28px; }
-.filter-select:focus, .filter-input:focus { border-color:var(--red-dim); }
-.filter-select option { background:var(--surface2); }
-.date-row { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
-.filter-reset {
-  width:100%; background:transparent; border:1px solid var(--border);
-  color:var(--muted); font-family:'IBM Plex Mono',monospace; font-size:10px;
-  letter-spacing:.1em; text-transform:uppercase; padding:7px;
-  border-radius:3px; cursor:pointer; transition:border-color .2s, color .2s;
-  margin-top:4px;
-}
-.filter-reset:hover { border-color:var(--red-dim); color:var(--text); }
-.filter-divider { height:1px; background:var(--border); margin:20px 0; }
-
-/* STAT MINI CARDS */
-.mini-stats { display:flex; flex-direction:column; gap:8px; margin-bottom: 20px; }
-.mini-stat {
-  background:var(--surface2); border:1px solid var(--border); border-radius:3px;
-  padding:10px 12px;
-}
-.mini-stat-label { font-family:'IBM Plex Mono',monospace; font-size:9px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); margin-bottom:4px; }
-.mini-stat-val { font-family:'Playfair Display',serif; font-size:22px; font-weight:700; line-height:1; }
-.mini-stat-val.red { color:var(--red); }
-.mini-stat-val.amber { color:var(--amber); }
-
-/* LEADERBOARD WIDGET */
-.leaderboard-widget {
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: 3px;
-  padding: 12px;
-  margin-bottom: 20px;
-}
-.leaderboard-title {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 10px;
-  letter-spacing: .1em;
-  text-transform: uppercase;
-  color: var(--amber);
-  margin-bottom: 12px;
-  border-bottom: 1px solid var(--border);
-  padding-bottom: 6px;
-}
-
-/* MAIN PANEL */
-.main-panel { padding:20px 24px; overflow-y:auto; display: flex; flex-direction: column; }
-
-/* MAP VIEW (Always Top) */
-#mapContainer {
-  width: 100%;
-  height: 350px;
-  min-height: 350px;
-  border-radius: 4px;
-  border: 1px solid var(--border);
-  margin-bottom: 20px;
-  z-index: 1;
-  flex-shrink: 0;
-}
-
-/* CHART VIEW */
-.chart-container {
-  width: 100%;
-  height: 200px;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 10px;
-  margin-bottom: 20px;
-  background: var(--surface);
-  position: relative;
-}
-
-/* TOOLBAR */
-.toolbar {
-  display:flex; align-items:center; gap:10px; margin-bottom:16px; flex-wrap:wrap;
-}
-.search-wrap { flex:1; min-width:200px; position:relative; }
-.search-wrap input {
-  width:100%; background:var(--surface); border:1px solid var(--border);
-  border-radius:3px; color:var(--text); font-size:13px; padding:8px 10px 8px 34px;
-  outline:none; font-family:'Noto Sans',sans-serif; transition:border-color .2s;
-}
-.search-wrap input:focus { border-color:var(--red-dim); }
-.search-wrap .search-icon { position:absolute; left:10px; top:50%; transform:translateY(-50%); color:var(--muted); font-size:14px; pointer-events:none; }
-
-.btn-export { background:rgba(74,158,255,.1); border:1px solid rgba(74,158,255,.3); color:var(--blue); padding:7px 12px; border-radius:3px; cursor:pointer; font-size:12px; font-family:'IBM Plex Mono',monospace; text-transform:uppercase; transition:background .15s; display:inline-flex; align-items:center; gap:5px;}
-.btn-export:hover { background:rgba(74,158,255,.2); }
-
-.view-toggle { display:flex; border:1px solid var(--border); border-radius:3px; overflow:hidden; }
-.view-btn { background:var(--surface); border:none; color:var(--muted); padding:7px 12px; cursor:pointer; font-size:14px; transition:background .15s, color .15s; }
-.view-btn.active { background:var(--surface3); color:var(--text); }
-.result-count { font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--muted); white-space:nowrap; }
-
-/* CASE CARDS */
-.cases-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:12px; }
-.case-card {
-  background:var(--surface); border:1px solid var(--border); border-radius:3px;
-  padding:16px 18px; transition:border-color .2s, background .2s;
-  position:relative; overflow:hidden; animation:fadeIn .3s ease both;
-  cursor: pointer;
-}
-.case-card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:var(--red); transform:scaleX(0); transform-origin:left; transition:transform .25s; }
-.case-card:hover { border-color:var(--border2); background:var(--surface2); }
-.case-card:hover::before { transform:scaleX(1); }
-.case-card.new-case { border-color:var(--red-dim); }
-.case-card.new-case::before { transform:scaleX(1); }
-@keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
-
-.card-top { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px; gap:8px; }
-.card-date { font-family:'IBM Plex Mono',monospace; font-size:10px; color:var(--red); letter-spacing:.07em; }
-.badge { display:inline-block; border-radius:2px; padding:2px 7px; font-family:'IBM Plex Mono',monospace; font-size:9px; letter-spacing:.08em; text-transform:uppercase; }
-.badge-new { background:var(--red-glow); border:1px solid var(--red-dim); color:var(--red); }
-.badge-klb { background:rgba(245,166,35,.12); border:1px solid rgba(245,166,35,.3); color:var(--amber); }
-.card-lokasi { font-weight:700; font-size:14px; color:#fff; margin-bottom:4px; line-height:1.3; }
-.card-geo { font-size:12px; color:var(--muted); margin-bottom:10px; display:flex; align-items:center; gap:4px; flex-wrap:wrap; }
-.geo-sep { color:var(--muted2); }
-.card-gejala { font-size:12px; color:var(--muted); margin-bottom:12px; }
-.card-bottom { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:6px; }
-.korban-chip { display:inline-flex; align-items:center; gap:5px; background:var(--red-glow); border:1px solid var(--red-dim); border-radius:3px; padding:3px 10px; font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--red); font-weight:600; }
-.rawat-chip { display:inline-flex; align-items:center; gap:4px; background:rgba(74,158,255,.08); border:1px solid rgba(74,158,255,.2); border-radius:3px; padding:3px 8px; font-family:'IBM Plex Mono',monospace; font-size:10px; color:var(--blue); }
-.sumber-chip { font-family:'IBM Plex Mono',monospace; font-size:9px; color:var(--muted2); }
-
-/* TABLE VIEW */
-.cases-table { width:100%; border-collapse:collapse; font-size:13px; }
-.cases-table th { font-family:'IBM Plex Mono',monospace; font-size:9px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); text-align:left; padding:9px 12px; border-bottom:1px solid var(--border); background:var(--surface); white-space:nowrap; cursor:pointer; user-select:none; }
-.cases-table th:hover { color:var(--text); }
-.cases-table th .sort-icon { margin-left:4px; opacity:.4; }
-.cases-table th.sorted .sort-icon { opacity:1; color:var(--red); }
-.cases-table td { padding:10px 12px; border-bottom:1px solid var(--border); background:var(--surface); vertical-align:top; cursor: pointer; }
-.cases-table tr:hover td { background:var(--surface2); }
-.cases-table .td-date { font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--red); white-space:nowrap; }
-.cases-table .td-korban { font-family:'IBM Plex Mono',monospace; font-weight:600; color:var(--amber); }
-.cases-table .td-geo { color:var(--muted); font-size:12px; }
-.cases-table .td-new .badge-new { vertical-align:middle; }
-
-/* TOAST */
-.toast-container { position:fixed; top:16px; right:16px; z-index:9998; display:flex; flex-direction:column; gap:8px; }
-.toast {
-  background:var(--surface2); border:1px solid var(--border2); border-radius:4px;
-  padding:12px 16px; max-width:320px; font-size:13px;
-  box-shadow:0 4px 24px rgba(0,0,0,.4);
-  animation:slideIn .3s ease both;
-  display:flex; align-items:flex-start; gap:10px;
-}
-.toast.success { border-left:3px solid var(--green); }
-.toast.error { border-left:3px solid var(--red); }
-.toast.info { border-left:3px solid var(--blue); }
-.toast-icon { font-size:16px; flex-shrink:0; margin-top:1px; }
-.toast-body {}
-.toast-title { font-weight:700; color:#fff; margin-bottom:3px; }
-.toast-msg { font-size:12px; color:var(--muted); line-height:1.5; }
-@keyframes slideIn { from{opacity:0;transform:translateX(20px)} to{opacity:1;transform:none} }
-
-/* AI STATUS BAR */
-.ai-status {
-  background:var(--surface); border:1px solid var(--border); border-radius:3px;
-  padding:10px 14px; margin-bottom:14px; display:none;
-  font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--muted);
-  align-items:center; gap:10px;
-}
-.ai-status.show { display:flex; }
-.ai-status .progress-wrap { flex:1; background:var(--surface2); border-radius:2px; height:3px; overflow:hidden; }
-.ai-status .progress-bar { height:100%; background:linear-gradient(90deg, var(--red-dim), var(--red)); border-radius:2px; animation:progress-anim 2s ease-in-out infinite; }
-@keyframes progress-anim { 0%{width:0%;margin-left:0} 50%{width:60%;margin-left:20%} 100%{width:0%;margin-left:100%} }
-
-/* EMPTY STATE */
-.empty-state { text-align:center; padding:60px 20px; color:var(--muted); }
-.empty-state .icon { font-size:40px; margin-bottom:12px; }
-.empty-state p { font-size:13px; }
-
-/* FOOTER */
-footer { border-top:1px solid var(--border); padding:16px 28px; display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; font-family:'IBM Plex Mono',monospace; font-size:10px; color:var(--muted); }
-
-/* RESPONSIVE */
-@media(max-width:768px) {
-  .app-body { grid-template-columns:1fr; }
-  .sidebar { position:relative; height:auto; border-right:none; border-bottom:1px solid var(--border); }
+@media(max-width:768px){
+  .app-body{grid-template-columns:1fr}
+  .sidebar{position:relative;height:auto;border-right:none;border-bottom:1px solid var(--border)}
 }
 </style>
 </head>
 <body>
 
-<div class="alert-strip">
-  ⚠ SITUASI AKTIF — Kemenkes: 37.673 korban · 445 kejadian · 36 provinsi · per 10 Mei 2026 — Data terus diperbarui
+<div class="alert-strip" id="alertStrip">
+  ⚠ SITUASI AKTIF — Data diperbarui otomatis setiap 5 menit via GitHub Actions · Klik kasus untuk cari berita
 </div>
 
 <header>
   <div>
     <div class="logo-eyebrow">Pemantau Independen · Indonesia</div>
     <div class="logo-title">MBG<span>•</span>Monitor</div>
-    <div class="logo-sub">Pantau kasus keracunan program Makan Bergizi Gratis — filter per wilayah</div>
+    <div class="logo-sub">Pantau kasus keracunan program Makan Bergizi Gratis — diperbarui otomatis</div>
   </div>
   <div class="header-right">
-    <div class="live-badge"><span class="live-dot"></span> Live · Diperbarui 13 Mei 2026</div>
-    <button class="btn-refresh" id="btnRefresh" onclick="refreshWithAI()">
-      <span class="spin" id="refreshIcon">⟳</span>
-      <span id="refreshLabel">Perbarui dengan AI</span>
-    </button>
+    <div class="live-badge">
+      <span class="live-dot"></span>
+      Auto-update · <span id="lastRefreshLabel">Memuat…</span>
+    </div>
+    <div class="last-refresh" id="nextRefreshLabel"></div>
+    <div class="next-refresh-bar"><div class="next-refresh-fill" id="refreshBar" style="width:100%"></div></div>
   </div>
 </header>
 
+<!-- PETA HEATMAP — full width -->
+<div id="mapContainer"></div>
+
+<!-- ANALYTICS -->
+<div class="analytics-wrap">
+  <div class="analytics-header" onclick="toggleAnalytics()">
+    <div class="analytics-header-title">
+      <span>📊 Analitik &amp; Statistik</span>
+      <span style="color:var(--muted2);font-size:9px" id="analyticsSubtitle"></span>
+    </div>
+    <span class="analytics-toggle-icon" id="analyticsIcon">▾</span>
+  </div>
+  <div class="analytics-inner" id="analyticsInner">
+    <div class="chart-panel">
+      <div class="analytics-panel-title">📈 Tren Kasus &amp; Korban per Bulan</div>
+      <div class="chart-canvas-wrap"><canvas id="trendChart"></canvas></div>
+    </div>
+    <div class="leaderboard-panel">
+      <div class="analytics-panel-title">🏆 Top Provinsi <span style="color:var(--muted2);margin-left:4px">(klik = filter)</span></div>
+      <div id="leaderboard"></div>
+    </div>
+  </div>
+</div>
+
+<!-- APP BODY -->
 <div class="app-body">
   <aside class="sidebar">
     <div class="filter-section">
-      <span class="filter-label">🔍 Cari Lokasi / Kata Kunci</span>
+      <span class="filter-label">🔍 Cari Kata Kunci</span>
       <input class="filter-input" id="searchInput" type="text" placeholder="cth: Sumedang, SD, bakteri…" oninput="applyFilters()">
     </div>
-
     <div class="filter-divider"></div>
-
     <div class="filter-section">
       <span class="filter-label">🗺 Provinsi</span>
       <select class="filter-select" id="filterProvinsi" onchange="onProvinsiChange()">
         <option value="">Semua Provinsi</option>
       </select>
     </div>
-
     <div class="filter-section">
       <span class="filter-label">🏘 Kabupaten / Kota</span>
       <select class="filter-select" id="filterKabupaten" onchange="onKabupatenChange()">
         <option value="">Semua Kabupaten</option>
       </select>
     </div>
-
     <div class="filter-section">
       <span class="filter-label">📍 Kecamatan</span>
-      <select class="filter-select" id="filterKecamatan" onchange="onKecamatanChange()">
+      <select class="filter-select" id="filterKecamatan" onchange="applyFilters()">
         <option value="">Semua Kecamatan</option>
       </select>
     </div>
-    
-    <div class="filter-section">
-      <span class="filter-label">🏘️ Kelurahan / Desa</span>
-      <select class="filter-select" id="filterKelurahan" onchange="applyFilters()">
-        <option value="">Semua Kelurahan</option>
-      </select>
-    </div>
-
     <div class="filter-divider"></div>
-
     <div class="filter-section">
       <span class="filter-label">📅 Rentang Tanggal</span>
       <div class="date-row">
-        <input class="filter-input" id="dateFrom" type="date" value="2025-01-01" onchange="applyFilters()" style="font-size:12px;">
-        <input class="filter-input" id="dateTo" type="date" onchange="applyFilters()" style="font-size:12px;">
+        <input class="filter-input" id="dateFrom" type="date" value="2025-01-01" onchange="applyFilters()" style="font-size:12px">
+        <input class="filter-input" id="dateTo" type="date" onchange="applyFilters()" style="font-size:12px">
       </div>
     </div>
-
     <div class="filter-section">
       <span class="filter-label">👥 Min. Korban</span>
       <input class="filter-input" id="minKorban" type="number" placeholder="cth: 50" min="0" oninput="applyFilters()">
     </div>
-
     <button class="filter-reset" onclick="resetFilters()">↺ Reset Semua Filter</button>
-
     <div class="filter-divider"></div>
-
-    <div class="mini-stats" id="miniStats">
+    <div class="mini-stats">
       <div class="mini-stat">
         <div class="mini-stat-label">Kasus Tampil</div>
         <div class="mini-stat-val amber" id="statKasus">0</div>
@@ -393,377 +279,179 @@ footer { border-top:1px solid var(--border); padding:16px 28px; display:flex; ju
         <div class="mini-stat-val" id="statRawat">0</div>
       </div>
     </div>
-
-    <div class="leaderboard-widget">
-      <div class="leaderboard-title">📍 Top 5 Provinsi (Korban)</div>
-      <div id="leaderboardOutput">
-        </div>
-    </div>
-
   </aside>
 
   <main class="main-panel">
-    
-    <div id="mapContainer"></div>
-
-    <div class="chart-container">
-      <canvas id="trendChart"></canvas>
+    <div class="new-data-banner" id="newDataBanner" onclick="location.reload()">
+      🔄 Data baru tersedia! Klik untuk memuat ulang halaman.
     </div>
-
     <div class="toolbar">
       <div class="search-wrap">
-        <span class="search-icon">⊕</span>
+        <span class="si">⊕</span>
         <input type="text" id="searchInput2" placeholder="Cari di hasil filter…" oninput="applyFilters()">
       </div>
       <span class="result-count" id="resultCount">Memuat…</span>
-      
-      <button class="btn-export" onclick="exportCSV()" title="Unduh data dalam format CSV">
-        📥 Unduh CSV
-      </button>
-
+      <button class="btn-export" onclick="exportCSV()">⬇ CSV</button>
       <div class="view-toggle">
-        <button class="view-btn active" id="btnCard" onclick="setView('card')" title="Tampilan Kartu">▦</button>
-        <button class="view-btn" id="btnTable" onclick="setView('table')" title="Tampilan Tabel">≡</button>
+        <button class="view-btn active" id="btnCard" onclick="setView('card')" title="Kartu">▦</button>
+        <button class="view-btn" id="btnTable" onclick="setView('table')" title="Tabel">≡</button>
       </div>
     </div>
-
-    <div class="ai-status" id="aiStatus">
-      <span>🤖 AI sedang mencari berita terbaru…</span>
-      <div class="progress-wrap"><div class="progress-bar"></div></div>
-    </div>
-
     <div id="casesOutput"></div>
-
   </main>
 </div>
 
 <footer>
-  <div>Sumber: Kemenkes RI · JPPI · BGN · Wikipedia · Media terpercaya</div>
+  <div>Sumber: Kemenkes RI · JPPI · BGN · Wikipedia · Media terpercaya · Gemini AI</div>
   <div>MBG Monitor · Independen · Non-komersial · 2026</div>
 </footer>
 
 <div class="toast-container" id="toastContainer"></div>
 
-<script src="data.js"></script>
-
 <script>
-// ─── STATE ────────────────────────────────────────────────────────────────
-let currentView = 'card';
-let sortField = 'tanggal';
-let sortDir = -1;
-let filteredData = [...CASES];
-let nextId = CASES.length + 1;
-let map, heatLayer;
-let mapMarkers = [];
-let chartInstance;
+// ── LOAD DATA DARI DATA.JS ────────────────────────────────────────────────────
+// window.MBG_DATA di-set oleh <script src="data.js">
+let CASES      = (window.MBG_DATA?.cases      || []).map(c => ({...c}));
+let GEO_COORDS = window.MBG_DATA?.geoCoords   || {};
+let DATA_LAST_UPDATED = window.MBG_DATA?.lastUpdated || '';
 
-// ─── GEO HELPERS ─────────────────────────────────────────────────────────
+// ── STATE ─────────────────────────────────────────────────────────────────────
+let filteredData = [];
+let currentView  = 'card';
+let sortField    = 'tanggal';
+let sortDir      = -1;
+let nextId       = CASES.reduce((m,c) => Math.max(m, c.id||0), 0) + 1;
+
+// ── GEO HELPERS ───────────────────────────────────────────────────────────────
+function getCoords(c) {
+  if (c.lat && c.lng) return [c.lat, c.lng];
+  return GEO_COORDS[c.kabupaten] || GEO_COORDS[c.provinsi] || null;
+}
+
 function buildGeoOptions() {
-  const provinsiSel = document.getElementById('filterProvinsi');
-  const unique = [...new Set(CASES.map(c => c.provinsi))].sort();
-  unique.forEach(p => {
-    const o = document.createElement('option');
-    o.value = p; o.textContent = p;
-    provinsiSel.appendChild(o);
-  });
+  const sel = document.getElementById('filterProvinsi');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">Semua Provinsi</option>';
+  [...new Set(CASES.map(c => c.provinsi))].sort()
+    .forEach(p => { const o=document.createElement('option'); o.value=p; o.textContent=p; sel.appendChild(o); });
+  if (cur) sel.value = cur;
 }
 
 function onProvinsiChange() {
   const prov = document.getElementById('filterProvinsi').value;
-  const kabSel = document.getElementById('filterKabupaten');
-  const kecSel = document.getElementById('filterKecamatan');
-  const kelSel = document.getElementById('filterKelurahan');
-  
-  kabSel.innerHTML = '<option value="">Semua Kabupaten</option>';
-  kecSel.innerHTML = '<option value="">Semua Kecamatan</option>';
-  kelSel.innerHTML = '<option value="">Semua Kelurahan</option>';
-  
+  const kab  = document.getElementById('filterKabupaten');
+  const kec  = document.getElementById('filterKecamatan');
+  kab.innerHTML = '<option value="">Semua Kabupaten</option>';
+  kec.innerHTML = '<option value="">Semua Kecamatan</option>';
   if (prov) {
-    const kabs = [...new Set(CASES.filter(c => c.provinsi === prov).map(c => c.kabupaten))].sort();
-    kabs.forEach(k => {
-      const o = document.createElement('option');
-      o.value = k; o.textContent = k;
-      kabSel.appendChild(o);
-    });
+    [...new Set(CASES.filter(c=>c.provinsi===prov).map(c=>c.kabupaten))].sort()
+      .forEach(k => { const o=document.createElement('option'); o.value=k; o.textContent=k; kab.appendChild(o); });
   }
   applyFilters();
 }
 
 function onKabupatenChange() {
   const prov = document.getElementById('filterProvinsi').value;
-  const kab = document.getElementById('filterKabupaten').value;
-  const kecSel = document.getElementById('filterKecamatan');
-  const kelSel = document.getElementById('filterKelurahan');
-  
-  kecSel.innerHTML = '<option value="">Semua Kecamatan</option>';
-  kelSel.innerHTML = '<option value="">Semua Kelurahan</option>';
-  
+  const kab  = document.getElementById('filterKabupaten').value;
+  const kec  = document.getElementById('filterKecamatan');
+  kec.innerHTML = '<option value="">Semua Kecamatan</option>';
   if (kab) {
-    const kecs = [...new Set(
-      CASES.filter(c => (!prov || c.provinsi === prov) && c.kabupaten === kab && c.kecamatan !== '-')
-        .map(c => c.kecamatan)
-    )].sort();
-    kecs.forEach(k => {
-      const o = document.createElement('option');
-      o.value = k; o.textContent = k;
-      kecSel.appendChild(o);
-    });
+    [...new Set(CASES.filter(c=>(!prov||c.provinsi===prov)&&c.kabupaten===kab&&c.kecamatan!=='-').map(c=>c.kecamatan))].sort()
+      .forEach(k => { const o=document.createElement('option'); o.value=k; o.textContent=k; kec.appendChild(o); });
   }
   applyFilters();
 }
 
-function onKecamatanChange() {
-  const prov = document.getElementById('filterProvinsi').value;
-  const kab = document.getElementById('filterKabupaten').value;
-  const kec = document.getElementById('filterKecamatan').value;
-  const kelSel = document.getElementById('filterKelurahan');
-  
-  kelSel.innerHTML = '<option value="">Semua Kelurahan</option>';
-  
-  if (kec) {
-    const kels = [...new Set(
-      CASES.filter(c => (!prov || c.provinsi === prov) && (!kab || c.kabupaten === kab) && c.kecamatan === kec && c.kelurahan !== '-')
-        .map(c => c.kelurahan)
-    )].sort();
-    kels.forEach(k => {
-      const o = document.createElement('option');
-      o.value = k; o.textContent = k;
-      kelSel.appendChild(o);
-    });
-  }
-  applyFilters();
-}
-
-// ─── SEARCH NEWS HELPER ───────────────────────────────────────────────────
-function openNews(kabupaten, lokasi, tanggal) {
-  const query = `keracunan makan bergizi gratis ${kabupaten} ${lokasi === '-' ? '' : lokasi}`.trim();
-  const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}&tbm=nws`;
-  window.open(searchUrl, '_blank');
-}
-
-// ─── FILTERS ──────────────────────────────────────────────────────────────
+// ── FILTERS ───────────────────────────────────────────────────────────────────
 function applyFilters() {
-  const search1 = (document.getElementById('searchInput').value || '').toLowerCase();
-  const search2 = (document.getElementById('searchInput2').value || '').toLowerCase();
-  const search = search1 || search2;
-  const prov = document.getElementById('filterProvinsi').value;
+  const s   = ((document.getElementById('searchInput').value||'')+(document.getElementById('searchInput2').value||'')).toLowerCase();
+  const prov= document.getElementById('filterProvinsi').value;
   const kab = document.getElementById('filterKabupaten').value;
   const kec = document.getElementById('filterKecamatan').value;
-  const kel = document.getElementById('filterKelurahan').value;
-  const dateFrom = document.getElementById('dateFrom').value;
-  const dateTo = document.getElementById('dateTo').value;
-  const minK = parseInt(document.getElementById('minKorban').value) || 0;
+  const df  = document.getElementById('dateFrom').value;
+  const dt  = document.getElementById('dateTo').value;
+  const mk  = parseInt(document.getElementById('minKorban').value)||0;
 
   filteredData = CASES.filter(c => {
-    if (search && ![c.lokasi, c.provinsi, c.kabupaten, c.kecamatan, c.kelurahan, c.gejala, c.sumber].join(' ').toLowerCase().includes(search)) return false;
-    if (prov && c.provinsi !== prov) return false;
-    if (kab && c.kabupaten !== kab) return false;
-    if (kec && c.kecamatan !== kec) return false;
-    if (kel && c.kelurahan !== kel) return false;
-    if (dateFrom && c.tanggal < dateFrom) return false;
-    if (dateTo && c.tanggal > dateTo) return false;
-    if (c.korban < minK) return false;
+    if (s && ![c.lokasi,c.provinsi,c.kabupaten,c.kecamatan,c.gejala,c.sumber].join(' ').toLowerCase().includes(s)) return false;
+    if (prov && c.provinsi!==prov) return false;
+    if (kab  && c.kabupaten!==kab) return false;
+    if (kec  && c.kecamatan!==kec) return false;
+    if (df   && c.tanggal<df) return false;
+    if (dt   && c.tanggal>dt) return false;
+    if (c.korban<mk) return false;
     return true;
   });
 
-  sortData();
-  updateStats();
-  render();
+  sortData(); updateStats(); updateMap(); updateAnalytics(); render();
 }
 
 function resetFilters() {
-  document.getElementById('searchInput').value = '';
-  document.getElementById('searchInput2').value = '';
-  document.getElementById('filterProvinsi').value = '';
-  document.getElementById('filterKabupaten').value = '';
-  document.getElementById('filterKecamatan').value = '';
-  document.getElementById('filterKelurahan').value = '';
-  document.getElementById('filterKabupaten').innerHTML = '<option value="">Semua Kabupaten</option>';
-  document.getElementById('filterKecamatan').innerHTML = '<option value="">Semua Kecamatan</option>';
-  document.getElementById('filterKelurahan').innerHTML = '<option value="">Semua Kelurahan</option>';
-  document.getElementById('dateFrom').value = '2025-01-01';
-  document.getElementById('dateTo').value = '';
-  document.getElementById('minKorban').value = '';
+  ['searchInput','searchInput2','minKorban'].forEach(id => document.getElementById(id).value='');
+  document.getElementById('filterProvinsi').value='';
+  document.getElementById('filterKabupaten').innerHTML='<option value="">Semua Kabupaten</option>';
+  document.getElementById('filterKecamatan').innerHTML='<option value="">Semua Kecamatan</option>';
+  document.getElementById('dateFrom').value='2025-01-01';
+  document.getElementById('dateTo').value='';
   applyFilters();
 }
 
-// ─── SORT ─────────────────────────────────────────────────────────────────
+// ── SORT & STATS ──────────────────────────────────────────────────────────────
 function sortData() {
-  filteredData.sort((a, b) => {
-    let va = a[sortField], vb = b[sortField];
-    if (typeof va === 'string') return va.localeCompare(vb) * sortDir;
-    return (va - vb) * sortDir;
+  filteredData.sort((a,b) => {
+    let va=a[sortField], vb=b[sortField];
+    return (typeof va==='string' ? va.localeCompare(vb) : va-vb) * sortDir;
   });
 }
+function setSort(f) {
+  if (sortField===f) sortDir*=-1; else { sortField=f; sortDir=-1; }
+  sortData(); render();
+}
+function updateStats() {
+  document.getElementById('statKasus').textContent  = filteredData.length.toLocaleString('id-ID');
+  document.getElementById('statKorban').textContent  = filteredData.reduce((s,c)=>s+c.korban,0).toLocaleString('id-ID');
+  document.getElementById('statRawat').textContent   = filteredData.reduce((s,c)=>s+c.rawatInap,0).toLocaleString('id-ID');
+  document.getElementById('resultCount').textContent = `${filteredData.length} kasus`;
+}
 
-function setSort(field) {
-  if (sortField === field) sortDir *= -1;
-  else { sortField = field; sortDir = -1; }
-  sortData();
+// ── RENDER ────────────────────────────────────────────────────────────────────
+function setView(v) {
+  currentView=v;
+  document.getElementById('btnCard').classList.toggle('active',v==='card');
+  document.getElementById('btnTable').classList.toggle('active',v==='table');
   render();
 }
-
-// ─── EXPORT CSV ───────────────────────────────────────────────────────────
-function exportCSV() {
-  if (filteredData.length === 0) {
-    showToast('error', 'Gagal Ekspor', 'Tidak ada data untuk diunduh.');
-    return;
-  }
-  
-  const headers = ['Tanggal', 'Provinsi', 'Kabupaten/Kota', 'Kecamatan', 'Kelurahan/Desa', 'Lokasi', 'Total Korban', 'Rawat Inap', 'Gejala', 'Sumber', 'Status KLB'];
-  const rows = filteredData.map(c => [
-    c.tanggal, `"${c.provinsi}"`, `"${c.kabupaten}"`, `"${c.kecamatan}"`, `"${c.kelurahan}"`, `"${c.lokasi}"`,
-    c.korban, c.rawatInap, `"${c.gejala}"`, `"${c.sumber}"`, c.isKLB ? 'Ya' : 'Tidak'
-  ]);
-  
-  const csvContent = "data:text/csv;charset=utf-8," + headers.join(",") + "\n" + rows.map(e => e.join(",")).join("\n");
-  const encodedUri = encodeURI(csvContent);
-  const link = document.createElement("a");
-  link.setAttribute("href", encodedUri);
-  link.setAttribute("download", `mbg_monitor_data_${new Date().toISOString().split('T')[0]}.csv`);
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  showToast('success', 'Berhasil', 'File CSV sedang diunduh ke perangkat Anda.');
-}
-
-// ─── STATS ────────────────────────────────────────────────────────────────
-function updateStats() {
-  const totalKorban = filteredData.reduce((s, c) => s + c.korban, 0);
-  const totalRawat = filteredData.reduce((s, c) => s + c.rawatInap, 0);
-  document.getElementById('statKasus').textContent = filteredData.length.toLocaleString('id-ID');
-  document.getElementById('statKorban').textContent = totalKorban.toLocaleString('id-ID');
-  document.getElementById('statRawat').textContent = totalRawat.toLocaleString('id-ID');
-  document.getElementById('resultCount').textContent = `${filteredData.length} kasus ditemukan`;
-}
-
-// ─── RENDER MAIN ──────────────────────────────────────────────────────────
-function setView(v) {
-  currentView = v;
-  document.getElementById('btnCard').classList.toggle('active', v === 'card');
-  document.getElementById('btnTable').classList.toggle('active', v === 'table');
-  render(); 
-}
-
 function fmtDate(d) {
-  const months = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
-  const [y, m, day] = d.split('-');
-  return `${parseInt(day)} ${months[parseInt(m)-1]} ${y}`;
+  const mn=['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+  const [y,m,day]=d.split('-');
+  return `${parseInt(day)} ${mn[+m-1]} ${y}`;
 }
-
 function render() {
-  const out = document.getElementById('casesOutput');
-  renderMap();
-  renderChart();
-  renderLeaderboard();
-
-  if (filteredData.length === 0) {
-    out.innerHTML = `<div class="empty-state"><div class="icon">🔍</div><p>Belum ada kasus yang tercatat di database.</p></div>`;
+  const out=document.getElementById('casesOutput');
+  if (!filteredData.length) {
+    out.innerHTML='<div class="empty-state"><div class="icon">🔍</div><p>Tidak ada kasus yang cocok dengan filter ini.</p></div>';
     return;
   }
-
-  if (currentView === 'card') {
-    renderCards(out);
-  } else if (currentView === 'table') {
-    renderTable(out);
-  }
-}
-
-function renderLeaderboard() {
-  const out = document.getElementById('leaderboardOutput');
-  const provCount = {};
-  filteredData.forEach(c => {
-    if (!provCount[c.provinsi]) provCount[c.provinsi] = 0;
-    provCount[c.provinsi] += c.korban;
-  });
-
-  const sortedProv = Object.entries(provCount).sort((a, b) => b[1] - a[1]).slice(0, 5);
-
-  if (sortedProv.length === 0) {
-    out.innerHTML = '<div style="color:var(--muted); font-size:11px; font-style:italic;">Data tidak tersedia.</div>';
-    return;
-  }
-
-  out.innerHTML = sortedProv.map((p, i) => `
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; font-size:12px;">
-      <div style="display:flex; align-items:center; gap:8px; overflow:hidden;">
-        <span style="color:var(--muted); font-family:'IBM Plex Mono', monospace;">#${i + 1}</span>
-        <span style="color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${p[0]}">${p[0]}</span>
-      </div>
-      <span style="color:var(--red); font-weight:700; font-family:'IBM Plex Mono', monospace;">${p[1].toLocaleString('id-ID')}</span>
-    </div>
-  `).join('');
-}
-
-function renderChart() {
-  const ctx = document.getElementById('trendChart').getContext('2d');
-  const monthlyData = {};
-  filteredData.forEach(c => {
-    const monthKey = c.tanggal.substring(0, 7);
-    if (!monthlyData[monthKey]) monthlyData[monthKey] = 0;
-    monthlyData[monthKey] += c.korban;
-  });
-
-  const sortedMonths = Object.keys(monthlyData).sort();
-  const labels = sortedMonths.map(m => {
-    const [year, month] = m.split('-');
-    const monthNames = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
-    return `${monthNames[parseInt(month)-1]} ${year}`;
-  });
-  const dataValues = sortedMonths.map(m => monthlyData[m]);
-
-  if (chartInstance) {
-    chartInstance.data.labels = labels;
-    chartInstance.data.datasets[0].data = dataValues;
-    chartInstance.update();
-  } else {
-    chartInstance = new Chart(ctx, {
-      type: 'line',
-      data: {
-        labels: labels,
-        datasets: [{
-          label: 'Total Korban', data: dataValues, borderColor: '#e3000f', 
-          backgroundColor: 'rgba(227, 0, 15, 0.15)', borderWidth: 2,
-          pointBackgroundColor: '#1a1a1f', pointBorderColor: '#e3000f',
-          pointBorderWidth: 2, pointRadius: 4, pointHoverRadius: 6, fill: true, tension: 0.3
-        }]
-      },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            backgroundColor: '#1a1a1f', titleColor: '#fff', bodyColor: '#e8e8ec',
-            borderColor: '#363640', borderWidth: 1, displayColors: false,
-            callbacks: { label: function(context) { return context.parsed.y.toLocaleString('id-ID') + ' korban'; } }
-          }
-        },
-        scales: {
-          y: { beginAtZero: true, grid: { color: '#2a2a32', drawBorder: false }, ticks: { color: '#6b6b7b', font: { family: "'IBM Plex Mono', monospace", size: 10 } } },
-          x: { grid: { display: false }, ticks: { color: '#6b6b7b', font: { family: "'IBM Plex Mono', monospace", size: 10 } } }
-        }
-      }
-    });
-  }
+  currentView==='card' ? renderCards(out) : renderTable(out);
 }
 
 function renderCards(out) {
-  out.innerHTML = `<div class="cases-grid">${filteredData.map(c => `
-    <div class="case-card ${c.isNew ? 'new-case' : ''}" onclick="openNews('${c.kabupaten}', '${c.lokasi}', '${c.tanggal}')" title="Klik untuk cari berita kasus ini di Google">
+  out.innerHTML=`<div class="cases-grid">${filteredData.map(c=>`
+    <div class="case-card ${c.isNew?'new-case':''}" onclick="openNews(${c.id})" title="Klik → cari berita">
       <div class="card-top">
         <div class="card-date">${fmtDate(c.tanggal)}</div>
-        <div>${c.isNew ? '<span class="badge badge-new">Baru</span>' : ''}${c.isKLB ? '<span class="badge badge-klb">KLB</span>' : ''}</div>
+        <div>${c.isNew?'<span class="badge badge-new">Baru</span>':''}${c.isKLB?'<span class="badge badge-klb">KLB</span>':''}</div>
       </div>
       <div class="card-lokasi">${c.lokasi}</div>
       <div class="card-geo">
         <span>${c.provinsi}</span><span class="geo-sep">›</span><span>${c.kabupaten}</span>
-        ${c.kecamatan !== '-' ? `<span class="geo-sep">›</span><span>${c.kecamatan}</span>` : ''}
+        ${c.kecamatan!=='-'?`<span class="geo-sep">›</span><span>${c.kecamatan}</span>`:''}
       </div>
       <div class="card-gejala">${c.gejala}</div>
       <div class="card-bottom">
         <div style="display:flex;gap:6px;flex-wrap:wrap">
           <span class="korban-chip">⚠ ${c.korban.toLocaleString('id-ID')} korban</span>
-          ${c.rawatInap ? `<span class="rawat-chip">🏥 ${c.rawatInap} rawat inap</span>` : ''}
+          ${c.rawatInap?`<span class="rawat-chip">🏥 ${c.rawatInap} rawat inap</span>`:''}
         </div>
         <span class="sumber-chip">${c.sumber}</span>
       </div>
@@ -771,81 +459,218 @@ function renderCards(out) {
 }
 
 function renderTable(out) {
-  const cols = [
-    { field:'tanggal', label:'Tanggal' }, { field:'provinsi', label:'Provinsi' },
-    { field:'kabupaten', label:'Kabupaten' }, { field:'lokasi', label:'Lokasi' },
-    { field:'korban', label:'Korban' }, { field:'sumber', label:'Sumber' },
+  const cols=[
+    {field:'tanggal',label:'Tanggal'},{field:'provinsi',label:'Provinsi'},
+    {field:'kabupaten',label:'Kabupaten'},{field:'kecamatan',label:'Kecamatan'},
+    {field:'lokasi',label:'Lokasi'},{field:'korban',label:'Korban'},
+    {field:'gejala',label:'Gejala'},{field:'sumber',label:'Sumber'},
   ];
-  out.innerHTML = `<div style="overflow-x:auto"><table class="cases-table">
-    <thead><tr>${cols.map(c => `<th onclick="setSort('${c.field}')" class="${sortField===c.field?'sorted':''}">${c.label} <span class="sort-icon">${sortField===c.field?(sortDir===1?'↑':'↓'):'↕'}</span></th>`).join('')}</tr></thead>
-    <tbody>${filteredData.map(c => `
-      <tr onclick="openNews('${c.kabupaten}', '${c.lokasi}', '${c.tanggal}')">
-        <td class="td-date">${fmtDate(c.tanggal)}</td><td>${c.provinsi}</td><td class="td-geo">${c.kabupaten}</td>
-        <td>${c.isNew ? '<span class="badge badge-new" style="margin-right:5px">Baru</span>' : ''}${c.lokasi}</td>
-        <td class="td-korban">${c.korban.toLocaleString('id-ID')}</td><td style="font-size:11px;color:var(--muted2)">${c.sumber}</td>
+  out.innerHTML=`<div style="overflow-x:auto"><table class="cases-table">
+    <thead><tr>${cols.map(c=>`<th onclick="setSort('${c.field}')" class="${sortField===c.field?'sorted':''}">${c.label} <span class="sort-icon">${sortField===c.field?(sortDir===1?'↑':'↓'):'↕'}</span></th>`).join('')}</tr></thead>
+    <tbody>${filteredData.map(c=>`
+      <tr onclick="openNews(${c.id})" title="Klik → cari berita">
+        <td class="td-date">${fmtDate(c.tanggal)}</td>
+        <td>${c.provinsi}</td><td class="td-geo">${c.kabupaten}</td><td class="td-geo">${c.kecamatan}</td>
+        <td>${c.isNew?'<span class="badge badge-new" style="margin-right:5px">Baru</span>':''}${c.isKLB?'<span class="badge badge-klb" style="margin-right:5px">KLB</span>':''}${c.lokasi}</td>
+        <td class="td-korban">${c.korban.toLocaleString('id-ID')}</td>
+        <td style="max-width:200px;font-size:12px;color:var(--muted)">${c.gejala}</td>
+        <td style="font-size:11px;color:var(--muted2)">${c.sumber}</td>
       </tr>`).join('')}
     </tbody></table></div>`;
 }
 
-function renderMap() {
-  if (!map) {
-    map = L.map('mapContainer').setView([-2.5489, 118.0148], 5);
-    L.tileLayer('https://{s}[.basemaps.cartocdn.com/dark_all/](https://.basemaps.cartocdn.com/dark_all/){z}/{x}/{y}{r}.png', {
-      attribution: '&copy; OpenStreetMap contributors &copy; CARTO', subdomains: 'abcd', maxZoom: 20
-    }).addTo(map);
-  }
+// ── OPEN NEWS ─────────────────────────────────────────────────────────────────
+function openNews(id) {
+  const c=CASES.find(x=>x.id===id); if(!c) return;
+  const q=`keracunan MBG ${c.lokasi} ${c.kabupaten} ${c.provinsi} ${c.tanggal.substring(0,7)}`;
+  window.open(`https://www.google.com/search?q=${encodeURIComponent(q)}&tbm=nws`,'_blank');
+}
+function newsUrl(c) {
+  const q=`keracunan MBG ${c.lokasi} ${c.kabupaten} ${c.provinsi} ${c.tanggal.substring(0,7)}`;
+  return `https://www.google.com/search?q=${encodeURIComponent(q)}&tbm=nws`;
+}
 
-  if (heatLayer) map.removeLayer(heatLayer);
-  mapMarkers.forEach(m => map.removeLayer(m));
-  mapMarkers = [];
-  const heatData = [];
-  
-  filteredData.forEach(c => {
-    // FALLBACK AMAN: Jika koordinat kota tidak ada, taruh di titik tengah Indonesia. TIDAK AKAN CRASH.
-    const coords = GEO_COORDS[c.kabupaten] || GEO_COORDS[c.provinsi] || [-0.7893, 113.9213];
-    
-    if (coords) {
-      const latJitter = (Math.random() - 0.5) * 0.04;
-      const lngJitter = (Math.random() - 0.5) * 0.04;
-      const finalLat = coords[0] + latJitter;
-      const finalLng = coords[1] + lngJitter;
-      
-      heatData.push([finalLat, finalLng, c.korban]);
-      const marker = L.circleMarker([finalLat, finalLng], { radius: 6, weight: 1, color: 'var(--surface2)', fillColor: 'var(--red)', fillOpacity: 0.8 }).addTo(map);
-      marker.bindTooltip(`<b>${c.lokasi}</b><br>${c.kabupaten}, ${c.provinsi}<br>Korban: ${c.korban}`);
-      marker.on('click', () => openNews(c.kabupaten, c.lokasi, c.tanggal));
-      mapMarkers.push(marker);
-    }
+// ── MAP ───────────────────────────────────────────────────────────────────────
+let _map=null, _heat=null, _marks=null;
+function initMap() {
+  if (_map) return;
+  _map=L.map('mapContainer',{zoomControl:true}).setView([-2.5,118],5);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+    attribution:'© <a href="https://openstreetmap.org/copyright">OpenStreetMap</a>',maxZoom:18
+  }).addTo(_map);
+  updateMap();
+}
+function updateMap() {
+  if (!_map) return;
+  if (_heat) { _map.removeLayer(_heat); _heat=null; }
+  if (_marks){ _map.removeLayer(_marks); _marks=null; }
+  const d=filteredData.filter(c=>getCoords(c));
+  if (!d.length) return;
+  const mx=Math.max(...d.map(c=>c.korban));
+  _heat=L.heatLayer(d.map(c=>[...getCoords(c), Math.max(0.1,c.korban/mx)]),{
+    radius:52,blur:38,maxZoom:9,
+    gradient:{0.2:'#4a9eff',0.45:'#f5a623',0.7:'#e3000f',1:'#ff0000'}
+  }).addTo(_map);
+  _marks=L.layerGroup();
+  d.forEach(c=>{
+    const r=Math.max(7,Math.min(26,Math.sqrt(c.korban)*1.1));
+    const m=L.circleMarker(getCoords(c),{radius:r,fillColor:c.isKLB?'#f5a623':'#e3000f',color:c.isKLB?'#a07000':'#7a0008',weight:1.5,opacity:.9,fillOpacity:.55});
+    m.bindPopup(`<b>${c.lokasi}</b>
+      <div class="pop-geo">${c.provinsi} › ${c.kabupaten}${c.kecamatan!=='-'?' › '+c.kecamatan:''}</div>
+      <div class="pop-korban">⚠ ${c.korban.toLocaleString('id-ID')} korban</div>
+      <div class="pop-gejala">${c.gejala}</div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted)">${fmtDate(c.tanggal)} · ${c.sumber}</div>
+      <a class="pop-link" href="${newsUrl(c)}" target="_blank" rel="noopener">Cari Berita →</a>`,{maxWidth:260});
+    _marks.addLayer(m);
   });
-
-  heatLayer = L.heatLayer(heatData, { radius: 35, blur: 20, maxZoom: 8, max: 1000, gradient: {0.2: '#4a9eff', 0.4: '#00d47e', 0.6: '#f5a623', 0.8: '#e3000f', 1.0: '#7a0008'} }).addTo(map);
-  setTimeout(() => map.invalidateSize(), 100);
+  _marks.addTo(_map);
+  setTimeout(()=>_map.invalidateSize(),50);
 }
 
-// ─── AI REFRESH ──────────────────────────────────────────────────────────
-function refreshWithAI() {
-  showToast('info', 'Otomatisasi Aktif', 'Pembaruan data sekarang berjalan otomatis setiap hari menggunakan GitHub Actions dan Gemini di latar belakang.');
+// ── ANALYTICS ─────────────────────────────────────────────────────────────────
+let _chart=null, _collapsed=false;
+function toggleAnalytics() {
+  _collapsed=!_collapsed;
+  document.getElementById('analyticsInner').classList.toggle('collapsed',_collapsed);
+  document.getElementById('analyticsIcon').textContent=_collapsed?'▸':'▾';
+  if (!_collapsed) setTimeout(updateAnalytics,50);
+}
+function updateAnalytics() {
+  if (_collapsed) return;
+  // Trend chart
+  const byMonth={};
+  filteredData.forEach(c=>{
+    const m=c.tanggal.substring(0,7);
+    if(!byMonth[m]) byMonth[m]={kasus:0,korban:0};
+    byMonth[m].kasus++; byMonth[m].korban+=c.korban;
+  });
+  const months=Object.keys(byMonth).sort();
+  const mn=['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+  const labels=months.map(m=>{const[y,mo]=m.split('-');return `${mn[+mo-1]} '${y.slice(2)}`;});
+
+  const ctx=document.getElementById('trendChart').getContext('2d');
+  if (_chart){_chart.destroy();_chart=null;}
+  Chart.defaults.color='#6b6b7b';Chart.defaults.borderColor='#2a2a32';
+  Chart.defaults.font.family="'IBM Plex Mono',monospace";Chart.defaults.font.size=10;
+  _chart=new Chart(ctx,{type:'bar',data:{labels,datasets:[
+    {label:'Korban',data:months.map(m=>byMonth[m].korban),backgroundColor:'rgba(227,0,15,.7)',borderColor:'#e3000f',borderWidth:1,borderRadius:2,yAxisID:'yK'},
+    {label:'Kasus',data:months.map(m=>byMonth[m].kasus),type:'line',borderColor:'#f5a623',backgroundColor:'rgba(245,166,35,.1)',borderWidth:2,pointRadius:3,pointBackgroundColor:'#f5a623',tension:.35,fill:true,yAxisID:'yC'}
+  ]},options:{responsive:true,maintainAspectRatio:false,
+    interaction:{mode:'index',intersect:false},
+    plugins:{legend:{position:'top',labels:{boxWidth:10,padding:14}},
+      tooltip:{backgroundColor:'#1a1a1f',borderColor:'#363640',borderWidth:1,padding:10,titleColor:'#fff',bodyColor:'#6b6b7b',
+        callbacks:{label:ctx=>`  ${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString('id-ID')}`}}},
+    scales:{x:{grid:{color:'#2a2a32'},ticks:{maxRotation:45}},
+      yK:{type:'linear',position:'left',grid:{color:'#2a2a32'},ticks:{callback:v=>v>=1000?(v/1000).toFixed(1)+'rb':v}},
+      yC:{type:'linear',position:'right',grid:{drawOnChartArea:false},ticks:{stepSize:1}}}}});
+
+  // Leaderboard
+  const byProv={};
+  filteredData.forEach(c=>{if(!byProv[c.provinsi])byProv[c.provinsi]={kasus:0,korban:0};byProv[c.provinsi].kasus++;byProv[c.provinsi].korban+=c.korban;});
+  const lb=Object.entries(byProv).map(([p,d])=>({provinsi:p,...d})).sort((a,b)=>b.korban-a.korban).slice(0,8);
+  const mx2=lb[0]?.korban||1;
+  document.getElementById('leaderboard').innerHTML=lb.map((d,i)=>`
+    <div class="lb-row" onclick="filterByProvinsi('${d.provinsi}')">
+      <div class="lb-rank ${i<3?'top3':''}">${i+1}</div>
+      <div><div class="lb-name">${d.provinsi}</div><div class="lb-bar-wrap"><div class="lb-bar" style="width:${Math.round(d.korban/mx2*100)}%"></div></div></div>
+      <div class="lb-nums"><div class="lb-korban">${d.korban.toLocaleString('id-ID')}</div><div class="lb-kasus">${d.kasus} kasus</div></div>
+    </div>`).join('');
+
+  const tot=filteredData.reduce((s,c)=>s+c.korban,0);
+  document.getElementById('analyticsSubtitle').textContent=`${filteredData.length} kasus · ${tot.toLocaleString('id-ID')} korban`;
 }
 
-// ─── TOAST ───────────────────────────────────────────────────────────────
-function showToast(type, title, msg) {
-  const container = document.getElementById('toastContainer');
-  const icons = { success:'✅', error:'❌', info:'ℹ️' };
-  const toast = document.createElement('div');
-  toast.className = `toast ${type}`;
-  toast.innerHTML = `<div class="toast-icon">${icons[type]||'•'}</div><div class="toast-body"><div class="toast-title">${title}</div><div class="toast-msg">${msg}</div></div>`;
-  container.appendChild(toast);
-  setTimeout(() => {
-    toast.style.animation = 'slideIn .3s ease reverse both';
-    setTimeout(() => toast.remove(), 350);
-  }, 5000);
+function filterByProvinsi(p) {
+  const s=document.getElementById('filterProvinsi');
+  s.value=p; onProvinsiChange();
+  document.querySelector('.app-body').scrollIntoView({behavior:'smooth',block:'start'});
 }
 
-// ─── INIT ─────────────────────────────────────────────────────────────────
+// ── EXPORT CSV ────────────────────────────────────────────────────────────────
+function exportCSV() {
+  const BOM='\uFEFF';
+  const hdr=['Tanggal','Provinsi','Kabupaten','Kecamatan','Lokasi','Korban','Rawat Inap','Gejala','Sumber','KLB'];
+  const rows=filteredData.map(c=>[
+    c.tanggal,c.provinsi,c.kabupaten,c.kecamatan,
+    `"${c.lokasi.replace(/"/g,'""')}"`,
+    c.korban,c.rawatInap,
+    `"${c.gejala.replace(/"/g,'""')}"`,
+    `"${c.sumber.replace(/"/g,'""')}"`,
+    c.isKLB?'Ya':'Tidak'
+  ].join(','));
+  const csv=BOM+[hdr.join(','),...rows].join('\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));
+  a.download=`mbg-monitor-${new Date().toISOString().split('T')[0]}.csv`;
+  a.click();
+  showToast('success','⬇ CSV Diunduh',`${filteredData.length} kasus diekspor.`);
+}
+
+// ── AUTO RELOAD SETIAP 5 MENIT ────────────────────────────────────────────────
+const RELOAD_INTERVAL = 5 * 60 * 1000; // 5 menit
+let _reloadTimer  = null;
+let _barTimer     = null;
+let _barStart     = Date.now();
+
+function startReloadCycle() {
+  _barStart = Date.now();
+  updateProgressBar();
+  _reloadTimer = setTimeout(checkForNewData, RELOAD_INTERVAL);
+}
+
+function updateProgressBar() {
+  const elapsed = Date.now() - _barStart;
+  const pct = Math.max(0, 100 - (elapsed / RELOAD_INTERVAL * 100));
+  document.getElementById('refreshBar').style.width = pct + '%';
+  const remaining = Math.max(0, RELOAD_INTERVAL - elapsed);
+  const m = Math.floor(remaining / 60000);
+  const s = Math.floor((remaining % 60000) / 1000);
+  document.getElementById('nextRefreshLabel').textContent =
+    `Cek berikutnya: ${m}:${s.toString().padStart(2,'0')}`;
+  if (pct > 0) _barTimer = setTimeout(updateProgressBar, 1000);
+}
+
+async function checkForNewData() {
+  try {
+    const r = await fetch('data.js?_=' + Date.now(), { cache: 'no-store' });
+    if (!r.ok) { startReloadCycle(); return; }
+    const text = await r.text();
+    const m = text.match(/lastUpdated:\s*["']([^"']+)["']/);
+    if (m && m[1] !== DATA_LAST_UPDATED) {
+      document.getElementById('newDataBanner').classList.add('show');
+      showToast('info','🔄 Data Baru Tersedia','Klik banner hijau untuk memuat kasus terbaru.');
+    }
+  } catch {}
+  startReloadCycle();
+}
+
+// ── LAST UPDATED LABEL ────────────────────────────────────────────────────────
+function updateLastUpdatedLabel() {
+  if (!DATA_LAST_UPDATED) return;
+  const d = new Date(DATA_LAST_UPDATED);
+  const fmt = d.toLocaleString('id-ID',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',timeZone:'Asia/Jakarta'});
+  document.getElementById('lastRefreshLabel').textContent = fmt + ' WIB';
+}
+
+// ── TOAST ─────────────────────────────────────────────────────────────────────
+function showToast(type,title,msg) {
+  const icons={success:'✅',error:'❌',info:'ℹ️'};
+  const t=document.createElement('div');
+  t.className=`toast ${type}`;
+  t.innerHTML=`<div class="toast-icon">${icons[type]||'•'}</div><div class="toast-body"><div class="toast-title">${title}</div><div class="toast-msg">${msg}</div></div>`;
+  document.getElementById('toastContainer').appendChild(t);
+  setTimeout(()=>{t.style.animation='slideIn .3s ease reverse both';setTimeout(()=>t.remove(),350);},5000);
+}
+
+// ── INIT ─────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('dateTo').max = new Date().toISOString().split('T')[0];
+  updateLastUpdatedLabel();
   buildGeoOptions();
   applyFilters();
+  initMap();
+  updateAnalytics();
+  startReloadCycle();
 });
 </script>
 </body>

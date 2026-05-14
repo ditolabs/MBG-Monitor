@@ -1,0 +1,52 @@
+name: 🤖 MBG Monitor — Auto Update Data
+
+on:
+  schedule:
+    # Setiap 5 menit — catatan: GitHub Actions bisa delay 5-10 menit di jam sibuk
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+    # Bisa dijalankan manual dari tab Actions di GitHub
+
+permissions:
+  contents: write   # diperlukan untuk git commit & push
+
+jobs:
+  update-data:
+    name: Scrape & Update data.js
+    runs-on: ubuntu-latest
+    timeout-minutes: 8    # kill jika > 8 menit (cegah hang)
+
+    steps:
+      - name: 📥 Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1  # cukup commit terakhir saja
+
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: 📦 Install dependencies
+        run: pip install -r requirements.txt --quiet
+
+      - name: 🤖 Jalankan updater
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python updater.py
+
+      - name: 💾 Commit & push jika ada perubahan
+        run: |
+          git config --global user.email "mbg-bot@github-actions"
+          git config --global user.name "MBG Monitor Bot"
+          git add data.js
+          # Hanya commit jika ada perubahan nyata
+          if git diff --staged --quiet; then
+            echo "ℹ Tidak ada perubahan data. Skip commit."
+          else
+            TIMESTAMP=$(date -u +'%Y-%m-%d %H:%M UTC')
+            git commit -m "🤖 Auto-update data: ${TIMESTAMP}"
+            git push
+            echo "✅ data.js berhasil di-push ke repo."
+          fi
