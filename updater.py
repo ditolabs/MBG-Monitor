@@ -13,13 +13,27 @@ import google.generativeai as genai
 # ── KONFIGURASI ──────────────────────────────────────────────────────────────
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 DATA_FILE      = "data.js"
-MAX_NEWS_ITEMS = 10       # berita terbaru yang dibaca Gemini
+MAX_NEWS_ITEMS = 15       # berita terbaru yang dibaca Gemini
 MIN_KORBAN     = 5        # abaikan kasus dengan korban < angka ini
+
+# Keyword Google News RSS — variasi luas untuk tangkap lebih banyak kasus
 KEYWORDS = [
     "keracunan+makan+bergizi+gratis",
     "keracunan+MBG+siswa",
     "keracunan+massal+MBG+sekolah",
+    "diduga+keracunan+MBG",           # tangkap "diduga keracunan MBG"
+    "mual+muntah+massal+MBG",         # tangkap variasi gejala
+    "keracunan+program+makan+bergizi",
+    "siswa+dirawat+MBG",              # tangkap kasus rawat inap
+    "keracunan+MBG+Jawa+Timur",       # spesifik Jatim
+    "keracunan+MBG+Jawa+Tengah",
+    "keracunan+MBG+Jawa+Barat",
+    "keracunan+MBG+Lampung",
+    "keracunan+MBG+Sumatera",
 ]
+
+# Wikipedia sebagai sumber historis — tangkap kasus yang tidak ada di RSS
+WIKIPEDIA_URL = "https://id.wikipedia.org/wiki/Daftar_kasus_keracunan_massal_program_Makan_Bergizi_Gratis"
 
 # ── VALIDASI ─────────────────────────────────────────────────────────────────
 if not GEMINI_API_KEY:
@@ -35,9 +49,8 @@ def load_existing_cases(filepath):
     try:
         with open(filepath, "r", encoding="utf-8") as f:
             content = f.read()
-        # Ekstrak array cases dari JS pakai regex sederhana
         matches = re.findall(r'tanggal:\s*"([^"]+)".*?kabupaten:\s*"([^"]+)"', content, re.DOTALL)
-        return set((t[:7], k.lower()) for t, k in matches)  # (YYYY-MM, kabupaten_lower)
+        return set((t[:7], k.lower()) for t, k in matches)
     except Exception as e:
         print(f"⚠ Tidak bisa baca file existing: {e}")
         return set()
@@ -54,7 +67,7 @@ def get_next_id(filepath):
 
 # ── SCRAPING GOOGLE NEWS RSS ──────────────────────────────────────────────────
 def fetch_news():
-    """Ambil berita dari Google News RSS dengan beberapa keyword."""
+    """Ambil berita dari Google News RSS dengan banyak keyword."""
     all_items = []
     seen_titles = set()
     headers = {"User-Agent": "Mozilla/5.0 (compatible; MBGMonitorBot/1.0)"}
@@ -73,23 +86,86 @@ def fetch_news():
                 desc  = item.find("description").text.strip() if item.find("description") else ""
                 link  = item.find("link").text.strip() if item.find("link") else ""
 
-                # Dedup berdasarkan title
+                # Filter: skip jika tidak mengandung kata kunci penting
+                combined = (title + " " + desc).lower()
+                if not any(kw in combined for kw in ["mbg", "makan bergizi", "keracunan"]):
+                    continue
+
                 if title and title not in seen_titles:
                     seen_titles.add(title)
                     all_items.append({
                         "title": title,
                         "pub_date": pub,
-                        "description": BeautifulSoup(desc, "html.parser").get_text()[:300],
+                        "description": BeautifulSoup(desc, "html.parser").get_text()[:400],
                         "link": link
                     })
         except Exception as e:
             print(f"⚠ Gagal fetch keyword '{keyword}': {e}")
-        time.sleep(1)  # jeda sopan antar request
+        time.sleep(0.5)
 
     # Urutkan terbaru, ambil MAX_NEWS_ITEMS
     all_items = all_items[:MAX_NEWS_ITEMS]
-    print(f"✅ Total {len(all_items)} artikel unik dikumpulkan dari Google News")
+    print(f"✅ Total {len(all_items)} artikel unik dari Google News RSS")
     return all_items
+
+# ── SCRAPING WIKIPEDIA ────────────────────────────────────────────────────────
+def fetch_wikipedia_cases(existing_cases):
+    """
+    Ambil daftar kasus dari halaman Wikipedia MBG.
+    Ini tangkap kasus historis yang tidak muncul di RSS karena sudah lama.
+    """
+    headers = {"User-Agent": "Mozilla/5.0 (compatible; MBGMonitorBot/1.0)"}
+    print("\n📖 Scraping Wikipedia untuk kasus historis...")
+    try:
+        resp = requests.get(WIKIPEDIA_URL, headers=headers, timeout=20)
+        resp.raise_for_status()
+        soup = BeautifulSoup(resp.content, "html.parser")
+
+        # Cari semua tabel wikitable di halaman
+        tables = soup.find_all("table", class_=re.compile("wikitable"))
+        wiki_items = []
+
+        for table in tables:
+            rows = table.find_all("tr")
+            headers_row = rows[0].find_all(["th", "td"]) if rows else []
+            header_texts = [h.get_text(strip=True).lower() for h in headers_row]
+
+            # Cari kolom yang relevan
+            col_map = {}
+            for i, h in enumerate(header_texts):
+                if any(x in h for x in ["tanggal", "date"]): col_map["tanggal"] = i
+                elif any(x in h for x in ["lokasi", "tempat", "wilayah"]): col_map["lokasi"] = i
+                elif any(x in h for x in ["korban", "jumlah"]): col_map["korban"] = i
+                elif any(x in h for x in ["provinsi"]): col_map["provinsi"] = i
+                elif any(x in h for x in ["kabupaten", "kota"]): col_map["kabupaten"] = i
+                elif any(x in h for x in ["kecamatan"]): col_map["kecamatan"] = i
+                elif any(x in h for x in ["gejala", "keterangan"]): col_map["gejala"] = i
+                elif any(x in h for x in ["sumber", "referensi"]): col_map["sumber"] = i
+
+            if not col_map.get("tanggal") and not col_map.get("lokasi"):
+                continue  # bukan tabel kasus, skip
+
+            for row in rows[1:]:
+                cells = row.find_all(["td", "th"])
+                if len(cells) < 2:
+                    continue
+                def cell(k):
+                    idx = col_map.get(k)
+                    return cells[idx].get_text(strip=True) if idx is not None and idx < len(cells) else ""
+
+                wiki_items.append({
+                    "title": f"[Wikipedia] {cell('lokasi') or cell('kabupaten')} - {cell('tanggal')}",
+                    "pub_date": cell("tanggal"),
+                    "description": f"Lokasi: {cell('lokasi')}. Provinsi: {cell('provinsi')}. Kabupaten: {cell('kabupaten')}. Kecamatan: {cell('kecamatan')}. Korban: {cell('korban')}. Gejala: {cell('gejala')}.",
+                    "link": WIKIPEDIA_URL
+                })
+
+        print(f"   Ditemukan {len(wiki_items)} baris dari Wikipedia")
+        return wiki_items
+
+    except Exception as e:
+        print(f"⚠ Gagal scrape Wikipedia: {e}")
+        return []
 
 # ── GEMINI AI EKSTRAKSI ───────────────────────────────────────────────────────
 def extract_cases_with_gemini(news_items, existing_cases):
@@ -232,15 +308,23 @@ def main():
     next_id  = get_next_id(DATA_FILE)
     print(f"   Ditemukan {len(existing)} entri existing, next ID: {next_id}")
 
-    print("\n🔍 Scraping Google News...")
-    news = fetch_news()
+    # ── Sumber 1: Google News RSS ──────────────────────────
+    print("\n🔍 Scraping Google News RSS...")
+    rss_news = fetch_news()
 
-    if not news:
-        print("ℹ Tidak ada berita ditemukan. Selesai.")
+    # ── Sumber 2: Wikipedia ────────────────────────────────
+    wiki_news = fetch_wikipedia_cases(existing)
+
+    # Gabungkan semua sumber
+    all_news = rss_news + wiki_news
+    print(f"\n📦 Total sumber yang dikirim ke Gemini: {len(all_news)} item")
+
+    if not all_news:
+        print("ℹ Tidak ada berita ditemukan dari semua sumber. Selesai.")
         return
 
-    print("\n🤖 Meminta Gemini menganalisis berita...")
-    new_cases = extract_cases_with_gemini(news, existing)
+    print("\n🤖 Meminta Gemini menganalisis semua sumber...")
+    new_cases = extract_cases_with_gemini(all_news, existing)
 
     if new_cases:
         print(f"\n💾 Menulis {len(new_cases)} kasus baru ke data.js...")

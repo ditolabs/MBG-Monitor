@@ -117,9 +117,9 @@ window.MBG_DATA = {
     "Bantul":             [-7.888,  110.329],
     "Gunung Kidul":       [-7.960,  110.592],
     // DKI Jakarta
+    "Jakarta Timur":      [-6.225,  106.900],
     "Jakarta Selatan":    [-6.261,  106.810],
     "Jakarta Barat":      [-6.168,  106.762],
-    "Jakarta Timur":      [-6.225,  106.900],
     // Banten
     "Tangerang":          [-6.178,  106.630],
     "Serang":             [-6.119,  106.150],
@@ -204,6 +204,12 @@ window.MBG_DATA = {
     // ── MEI 2026 ──────────────────────────────────────────
     { id:42, tanggal:"2026-05-08", provinsi:"Jawa Timur",     kabupaten:"Lumajang",         kecamatan:"Jatiroto",     lokasi:"SMKN 1 Jatiroto, Lumajang",       korban:200,  rawatInap:0,  gejala:"Ratusan siswa & guru alami diare, diselidiki",        sumber:"RI News Portal",           isNew:false, isKLB:false },
     { id:43, tanggal:"2026-05-12", provinsi:"Jawa Timur",     kabupaten:"Surabaya",         kecamatan:"-",            lokasi:"Berbagai sekolah, Surabaya",      korban:200,  rawatInap:0,  gejala:"Keracunan MBG — walimurid minta ganti bekal",         sumber:"Kompas.com",               isNew:false, isKLB:false },
+
+    // ── KASUS TAMBAHAN — VERIFIKASI MANUAL ────────────────
+    { id:44, tanggal:"2025-10-01", provinsi:"Jawa Timur",     kabupaten:"Bojonegoro",       kecamatan:"Kedungadem",   lokasi:"3 sekolah di Kec. Kedungadem, Bojonegoro", korban:599, rawatInap:0, gejala:"Keracunan massal diduga bakteri (E.coli, Salmonella) — kegagalan sistemik SPPG", sumber:"Unigoro.ac.id / Radar Bojonegoro", isNew:false, isKLB:false },
+    { id:45, tanggal:"2025-12-04", provinsi:"Jawa Timur",     kabupaten:"Ngawi",            kecamatan:"Mantingan",    lokasi:"SDN Mantingan 2,3,5 + Ponpes Absoru Sunah + Ponpes Miftahul Janah", korban:164, rawatInap:28, gejala:"Mual, muntah, diare — 1 dirujuk ke RSUD dr Soeroto", sumber:"detikJatim",             isNew:false, isKLB:false },
+    { id:46, tanggal:"2025-12-03", provinsi:"Jawa Timur",     kabupaten:"Bondowoso",        kecamatan:"Sumberwringin",lokasi:"Sekolah di Sumberwringin, Bondowoso",      korban:77,   rawatInap:0,  gejala:"Dugaan keracunan MBG massal",                         sumber:"detikJatim",               isNew:false, isKLB:false },
+    { id:47, tanggal:"2026-04-06", provinsi:"DKI Jakarta",    kabupaten:"Jakarta Timur",    kecamatan:"-",            lokasi:"Sekolah di Jakarta Timur",                korban:72,   rawatInap:0,  gejala:"Keracunan MBG — Wamenkes ungkap pemicunya",           sumber:"20.detik.com",             isNew:false, isKLB:false },
   ]
 
 }; // end MBG_DATA
