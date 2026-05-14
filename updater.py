@@ -17,7 +17,8 @@ model = genai.GenerativeModel('gemini-1.5-flash')
 
 print("Mencari berita terbaru dari Google News...")
 keyword = "keracunan+makan+bergizi+gratis"
-url = f"https://news.google.com/rss/search?q={keyword}&hl=id&gl=ID&ceid=ID:id"
+# Tambahkan +when:1y untuk mencari arsip berita 1 tahun ke belakang
+url = f"https://news.google.com/rss/search?q={keyword}+when:1y&hl=id&gl=ID&ceid=ID:id"
 
 response = requests.get(url)
 soup = BeautifulSoup(response.content, features="xml")
@@ -25,7 +26,7 @@ items = soup.findAll('item')
 
 # Kumpulkan 5 berita terbaru untuk dibaca Gemini
 news_texts = ""
-for item in items[:5]:
+for item in items[:20]:
     title = item.find('title').text
     pub_date = item.find('pubDate').text
     news_texts += f"- [{pub_date}] {title}\n"
@@ -39,19 +40,19 @@ print("Kumpulan berita ditemukan. Meminta Gemini menganalisis data...")
 # 2. Prompt untuk Gemini
 today_str = datetime.datetime.now().strftime("%Y-%m-%d")
 prompt = f"""
-Berikut adalah daftar berita terbaru tentang keracunan Makan Bergizi Gratis (MBG):
+Berikut adalah daftar arsip berita tentang keracunan Makan Bergizi Gratis (MBG):
 {news_texts}
 
 Tugasmu:
 1. Ekstrak kasus-kasus tersebut menjadi format JSON array.
-2. Jika beritanya sama/membahas kasus yang sama, gabungkan menjadi 1 kasus saja.
-3. Tanggal hari ini adalah {today_str}. Jika di berita tidak ada tanggal pasti, gunakan tanggal hari ini.
+2. Jika beritanya sama/membahas kasus yang sama di daerah yang sama, gabungkan menjadi 1 kasus saja.
+3. Ekstrak TANGGAL ASLI kejadian tersebut dari teks berita atau tanggal publikasi. Tulis dalam format YYYY-MM-DD. Jangan gunakan tanggal hari ini jika itu adalah kejadian lama!
 
 Keluarkan HANYA JSON murni tanpa format markdown ```json, contoh formatnya:
 [
   {{
     "id": 999,
-    "tanggal": "YYYY-MM-DD",
+    "tanggal": "2024-11-20", 
     "provinsi": "Nama Provinsi",
     "kabupaten": "Nama Kabupaten/Kota",
     "kecamatan": "-",
@@ -61,7 +62,7 @@ Keluarkan HANYA JSON murni tanpa format markdown ```json, contoh formatnya:
     "rawatInap": 0,
     "gejala": "Pusing, mual",
     "sumber": "Nama Media",
-    "isNew": true,
+    "isNew": false,
     "isKLB": false
   }}
 ]
