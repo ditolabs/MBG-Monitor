@@ -18,18 +18,40 @@ MIN_KORBAN     = 5        # abaikan kasus dengan korban < angka ini
 
 # Keyword Google News RSS — variasi luas untuk tangkap lebih banyak kasus
 KEYWORDS = [
+    # ── Keracunan ──────────────────────────────────────────
     "keracunan+makan+bergizi+gratis",
     "keracunan+MBG+siswa",
     "keracunan+massal+MBG+sekolah",
-    "diduga+keracunan+MBG",           # tangkap "diduga keracunan MBG"
-    "mual+muntah+massal+MBG",         # tangkap variasi gejala
+    "diduga+keracunan+MBG",
+    "mual+muntah+massal+MBG",
     "keracunan+program+makan+bergizi",
-    "siswa+dirawat+MBG",              # tangkap kasus rawat inap
-    "keracunan+MBG+Jawa+Timur",       # spesifik Jatim
+    "siswa+dirawat+MBG",
+    "keracunan+MBG+Jawa+Timur",
     "keracunan+MBG+Jawa+Tengah",
     "keracunan+MBG+Jawa+Barat",
     "keracunan+MBG+Lampung",
     "keracunan+MBG+Sumatera",
+    # ── Kecelakaan ─────────────────────────────────────────
+    "tabrakan+mobil+MBG",
+    "kecelakaan+motor+MBG",
+    "kecelakaan+kendaraan+makan+bergizi+gratis",
+    "mobil+pengiriman+MBG+kecelakaan",
+    "motor+pengantar+MBG+tabrakan",
+    "sopir+MBG+kecelakaan",
+    # ── SPPG ───────────────────────────────────────────────
+    "SPPG+bermasalah",
+    "SPPG+curang",
+    "dapur+MBG+bermasalah",
+    "SPPG+makanan+basi",
+    "penyelewengan+dana+MBG",
+    "korupsi+MBG",
+    "SPPG+tidak+layak",
+    "bahan+baku+MBG+busuk",
+    "penipuan+SPPG",
+    # ── Umum ───────────────────────────────────────────────
+    "masalah+MBG+terbaru",
+    "kontroversi+makan+bergizi+gratis",
+    "kritik+program+MBG",
 ]
 
 # Wikipedia sebagai sumber historis — tangkap kasus yang tidak ada di RSS
@@ -181,34 +203,41 @@ def extract_cases_with_gemini(news_items, existing_cases):
     )
 
     prompt = f"""
-Berikut daftar berita terbaru keracunan program Makan Bergizi Gratis (MBG) di Indonesia:
+Berikut daftar berita terbaru terkait program Makan Bergizi Gratis (MBG) di Indonesia:
 
 {news_text}
 
 Tugasmu:
-1. Ekstrak SEMUA kasus keracunan yang disebutkan menjadi JSON array.
-2. Jika berita sama (kasus yang sama), gabungkan menjadi 1 entri.
-3. Hanya masukkan kasus dengan korban minimal {MIN_KORBAN} orang.
-4. Abaikan berita yang bukan tentang keracunan MBG (opini, kebijakan, dll).
-5. Tanggal hari ini: {today}. Jika tanggal kejadian tidak jelas, gunakan tanggal publikasi berita.
+1. Ekstrak SEMUA insiden/kasus yang disebutkan menjadi JSON array.
+2. Kategorikan setiap kasus ke salah satu kategori berikut:
+   - "keracunan"   → siswa/warga keracunan makanan MBG
+   - "kecelakaan"  → kecelakaan kendaraan pengantar/operasional MBG
+   - "sppg"        → masalah SPPG (kecurangan, bahan basi, penyelewengan dana, dapur tidak layak)
+   - "lainnya"     → insiden MBG lain yang tidak masuk kategori di atas
+3. Jika berita sama (kasus yang sama), gabungkan menjadi 1 entri.
+4. Untuk keracunan: hanya masukkan jika korban minimal {MIN_KORBAN} orang.
+5. Untuk kecelakaan/sppg/lainnya: masukkan semua yang relevan.
+6. Abaikan berita opini, kebijakan umum, atau yang tidak ada insiden spesifik.
+7. Tanggal hari ini: {today}.
 
 Keluarkan HANYA JSON array murni tanpa markdown, tanpa penjelasan:
 [
   {{
     "tanggal": "YYYY-MM-DD",
+    "kategori": "keracunan|kecelakaan|sppg|lainnya",
     "provinsi": "Nama Provinsi Lengkap",
     "kabupaten": "Nama Kabupaten/Kota",
     "kecamatan": "Nama Kecamatan atau -",
-    "lokasi": "Nama Sekolah/Tempat Spesifik",
+    "lokasi": "Nama Sekolah/Tempat/Ruas Jalan Spesifik",
     "korban": 50,
     "rawatInap": 0,
-    "gejala": "deskripsi gejala singkat",
+    "deskripsi": "ringkasan kejadian 1 kalimat",
     "sumber": "Nama Media",
     "isKLB": false
   }}
 ]
 
-Jika tidak ada kasus yang bisa diekstrak, keluarkan: []
+Jika tidak ada insiden yang bisa diekstrak, keluarkan: []
 """
 
     try:
@@ -254,7 +283,9 @@ def write_to_datajs(filepath, new_cases, next_id):
     # Buat string JS untuk kasus-kasus baru
     js_entries = ""
     for i, c in enumerate(new_cases):
-        cid = next_id + i
+    for i, c in enumerate(new_cases):
+        cid       = next_id + i
+        kategori  = c.get("kategori", "keracunan").replace('"', '')
         korban    = int(c.get("korban", 0))
         rawat     = int(c.get("rawatInap", 0))
         is_klb    = "true" if c.get("isKLB") else "false"
@@ -263,11 +294,12 @@ def write_to_datajs(filepath, new_cases, next_id):
         kabupaten = c.get("kabupaten", "").replace('"', '').replace("'", '')
         kecamatan = c.get("kecamatan", "-").replace('"', '').replace("'", '')
         lokasi    = c.get("lokasi", "-").replace('"', '').replace("'", '')
-        gejala    = c.get("gejala", "-").replace('"', '').replace("'", '')
+        # Support both "gejala" (lama) dan "deskripsi" (baru)
+        deskripsi = (c.get("deskripsi") or c.get("gejala") or "-").replace('"', '').replace("'", '')
         sumber    = c.get("sumber", "AI/Google News").replace('"', '').replace("'", '')
 
         js_entries += f"""
-    {{ id:{cid}, tanggal:"{tanggal}", provinsi:"{provinsi}", kabupaten:"{kabupaten}", kecamatan:"{kecamatan}", lokasi:"{lokasi}", korban:{korban}, rawatInap:{rawat}, gejala:"{gejala}", sumber:"{sumber}", isNew:true, isKLB:{is_klb} }},"""
+    {{ id:{cid}, tanggal:"{tanggal}", kategori:"{kategori}", provinsi:"{provinsi}", kabupaten:"{kabupaten}", kecamatan:"{kecamatan}", lokasi:"{lokasi}", korban:{korban}, rawatInap:{rawat}, gejala:"{deskripsi}", sumber:"{sumber}", isNew:true, isKLB:{is_klb} }},"""
 
     if not js_entries:
         print("ℹ Tidak ada kasus baru untuk ditulis.")

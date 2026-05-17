@@ -177,6 +177,133 @@ footer{border-top:1px solid var(--border);padding:16px 28px;display:flex;justify
   .app-body{grid-template-columns:1fr}
   .sidebar{position:relative;height:auto;border-right:none;border-bottom:1px solid var(--border)}
 }
+
+/* AI DAERAH SEARCH ─────────────────────────────────── */
+.ai-search-wrap {
+  position:relative; display:flex; gap:6px; margin-bottom:20px;
+  background:var(--surface); border:1px solid var(--border2);
+  border-radius:4px; padding:14px 16px;
+}
+.ai-search-wrap::before {
+  content:'🔍 Cari kasus per daerah';
+  position:absolute; top:-10px; left:14px;
+  background:var(--surface); padding:0 6px;
+  font-family:'IBM Plex Mono',monospace; font-size:10px;
+  letter-spacing:.1em; text-transform:uppercase; color:var(--muted);
+}
+.ai-search-input {
+  flex:1; background:var(--surface2); border:1px solid var(--border);
+  border-radius:3px; color:var(--text); font-size:13px;
+  padding:9px 12px; outline:none; font-family:'Noto Sans',sans-serif;
+  transition:border-color .2s;
+}
+.ai-search-input:focus { border-color:var(--red-dim); }
+.ai-search-input::placeholder { color:var(--muted2); }
+.btn-ai-search {
+  display:inline-flex; align-items:center; gap:6px;
+  background:linear-gradient(135deg,var(--red-dim),var(--red));
+  border:none; border-radius:3px; color:#fff;
+  font-family:'IBM Plex Mono',monospace; font-size:11px;
+  letter-spacing:.07em; text-transform:uppercase;
+  padding:9px 16px; cursor:pointer; white-space:nowrap;
+  transition:opacity .2s, transform .15s;
+}
+.btn-ai-search:hover { opacity:.88; transform:translateY(-1px); }
+.btn-ai-search:disabled { opacity:.45; cursor:not-allowed; transform:none; }
+.btn-ai-search .spin { display:inline-block; }
+.btn-ai-search.loading .spin { animation:spin .7s linear infinite; }
+
+/* AI RESULT PANEL */
+.ai-result-panel {
+  background:var(--surface); border:1px solid var(--border2);
+  border-left:3px solid var(--red); border-radius:3px;
+  margin-bottom:20px; overflow:hidden;
+  animation:fadeIn .3s ease;
+  display:none;
+}
+.ai-result-panel.show { display:block; }
+.ai-result-header {
+  padding:12px 16px; border-bottom:1px solid var(--border);
+  display:flex; justify-content:space-between; align-items:center;
+}
+.ai-result-title {
+  font-family:'IBM Plex Mono',monospace; font-size:11px;
+  letter-spacing:.08em; text-transform:uppercase; color:var(--red);
+  display:flex; align-items:center; gap:8px;
+}
+.ai-result-close {
+  background:none; border:none; color:var(--muted); cursor:pointer;
+  font-size:16px; padding:0 4px; transition:color .15s;
+}
+.ai-result-close:hover { color:var(--text); }
+.ai-result-summary {
+  padding:10px 16px; font-size:12px; color:var(--muted);
+  border-bottom:1px solid var(--border); line-height:1.6;
+}
+.ai-result-summary strong { color:var(--text); }
+.ai-result-cases { padding:12px 16px; display:flex; flex-direction:column; gap:10px; }
+.ai-case-item {
+  background:var(--surface2); border:1px solid var(--border);
+  border-radius:3px; padding:12px 14px;
+  display:grid; grid-template-columns:1fr auto; gap:10px; align-items:start;
+}
+.ai-case-lokasi { font-weight:700; font-size:13px; color:#fff; margin-bottom:3px; }
+.ai-case-geo { font-size:11px; color:var(--muted); margin-bottom:5px; font-family:'IBM Plex Mono',monospace; }
+.ai-case-info { font-size:12px; color:var(--muted); }
+.ai-case-chips { display:flex; gap:6px; margin-top:8px; flex-wrap:wrap; }
+.ai-case-actions { display:flex; flex-direction:column; gap:6px; align-items:flex-end; }
+.btn-add-case {
+  display:inline-flex; align-items:center; gap:4px;
+  background:rgba(0,212,126,.1); border:1px solid rgba(0,212,126,.3);
+  border-radius:3px; color:var(--green); font-family:'IBM Plex Mono',monospace;
+  font-size:10px; letter-spacing:.07em; text-transform:uppercase;
+  padding:5px 10px; cursor:pointer; white-space:nowrap; transition:background .15s;
+}
+.btn-add-case:hover { background:rgba(0,212,126,.2); }
+.btn-add-case:disabled { opacity:.5; cursor:not-allowed; }
+.btn-news-case {
+  display:inline-flex; align-items:center; gap:4px;
+  background:transparent; border:1px solid var(--border);
+  border-radius:3px; color:var(--muted); font-family:'IBM Plex Mono',monospace;
+  font-size:10px; letter-spacing:.07em; text-transform:uppercase;
+  padding:5px 10px; cursor:pointer; white-space:nowrap; transition:border-color .15s, color .15s;
+}
+.btn-news-case:hover { border-color:var(--border2); color:var(--text); }
+.ai-empty {
+  padding:24px; text-align:center; color:var(--muted); font-size:13px;
+}
+.ai-empty .icon { font-size:28px; margin-bottom:8px; }
+
+/* KATEGORI TABS */
+.cat-tabs {
+  display:flex; gap:6px; margin-bottom:16px; flex-wrap:wrap;
+}
+.cat-tab {
+  display:inline-flex; align-items:center; gap:5px;
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:20px; color:var(--muted); font-family:'IBM Plex Mono',monospace;
+  font-size:10px; letter-spacing:.07em; text-transform:uppercase;
+  padding:5px 12px; cursor:pointer; transition:all .2s; white-space:nowrap;
+}
+.cat-tab:hover { border-color:var(--border2); color:var(--text); }
+.cat-tab.active { background:var(--surface3); color:var(--text); border-color:var(--border2); }
+.cat-tab.active.k-keracunan  { border-color:var(--red);    color:var(--red); }
+.cat-tab.active.k-kecelakaan { border-color:var(--amber);  color:var(--amber); }
+.cat-tab.active.k-sppg       { border-color:var(--blue);   color:var(--blue); }
+.cat-tab.active.k-lainnya    { border-color:var(--muted);  color:var(--text); }
+
+/* BADGE PER KATEGORI */
+.badge-kecelakaan { background:rgba(245,166,35,.12); border:1px solid rgba(245,166,35,.35); color:var(--amber); }
+.badge-sppg       { background:rgba(74,158,255,.1);  border:1px solid rgba(74,158,255,.3);  color:var(--blue);  }
+.badge-lainnya    { background:var(--surface3); border:1px solid var(--border2); color:var(--muted); }
+
+/* CASE CARD per kategori — border kiri */
+.case-card.kat-kecelakaan { border-left:3px solid var(--amber); }
+.case-card.kat-sppg       { border-left:3px solid var(--blue);  }
+.case-card.kat-lainnya    { border-left:3px solid var(--muted2);}
+.case-card.kat-kecelakaan::before { background:var(--amber); }
+.case-card.kat-sppg::before       { background:var(--blue);  }
+.case-card.kat-lainnya::before    { background:var(--muted2);}
 </style>
 </head>
 <body>
@@ -282,9 +409,43 @@ footer{border-top:1px solid var(--border);padding:16px 28px;display:flex;justify
   </aside>
 
   <main class="main-panel">
+    <!-- AI DAERAH SEARCH -->
+    <div class="ai-search-wrap">
+      <input class="ai-search-input" id="aiSearchInput"
+        type="text" placeholder="cth: Bojonegoro, Ngawi, Flores Timur…"
+        onkeydown="if(event.key==='Enter')triggerAISearch()">
+      <button class="btn-ai-search" id="btnAISearch" onclick="triggerAISearch()">
+        <span class="spin" id="aiSearchIcon">✦</span>
+        <span id="aiSearchLabel">Cari dengan AI</span>
+      </button>
+    </div>
+
+    <!-- AI RESULT PANEL -->
+    <div class="ai-result-panel" id="aiResultPanel">
+      <div class="ai-result-header">
+        <div class="ai-result-title">
+          <span>✦ Hasil AI</span>
+          <span id="aiResultDaerah" style="color:var(--text)"></span>
+        </div>
+        <button class="ai-result-close" onclick="closeAIResult()" title="Tutup">✕</button>
+      </div>
+      <div class="ai-result-summary" id="aiResultSummary"></div>
+      <div class="ai-result-cases" id="aiResultCases"></div>
+    </div>
+
     <div class="new-data-banner" id="newDataBanner" onclick="location.reload()">
       🔄 Data baru tersedia! Klik untuk memuat ulang halaman.
     </div>
+
+    <!-- FILTER KATEGORI -->
+    <div class="cat-tabs" id="catTabs">
+      <button class="cat-tab active"       onclick="setKategori('')">📋 Semua</button>
+      <button class="cat-tab k-keracunan"  onclick="setKategori('keracunan')">🤢 Keracunan</button>
+      <button class="cat-tab k-kecelakaan" onclick="setKategori('kecelakaan')">🚗 Kecelakaan</button>
+      <button class="cat-tab k-sppg"       onclick="setKategori('sppg')">🏭 SPPG</button>
+      <button class="cat-tab k-lainnya"    onclick="setKategori('lainnya')">📌 Lainnya</button>
+    </div>
+
     <div class="toolbar">
       <div class="search-wrap">
         <span class="si">⊕</span>
@@ -311,16 +472,17 @@ footer{border-top:1px solid var(--border);padding:16px 28px;display:flex;justify
 <script>
 // ── LOAD DATA DARI DATA.JS ────────────────────────────────────────────────────
 // window.MBG_DATA di-set oleh <script src="data.js">
-let CASES      = (window.MBG_DATA?.cases      || []).map(c => ({...c}));
+let CASES      = (window.MBG_DATA?.cases      || []).map(c => ({ kategori:'keracunan', ...c }));
 let GEO_COORDS = window.MBG_DATA?.geoCoords   || {};
 let DATA_LAST_UPDATED = window.MBG_DATA?.lastUpdated || '';
 
 // ── STATE ─────────────────────────────────────────────────────────────────────
-let filteredData = [];
-let currentView  = 'card';
-let sortField    = 'tanggal';
-let sortDir      = -1;
-let nextId       = CASES.reduce((m,c) => Math.max(m, c.id||0), 0) + 1;
+let filteredData    = [];
+let currentView     = 'card';
+let sortField       = 'tanggal';
+let sortDir         = -1;
+let filterKategori  = '';
+let nextId          = CASES.reduce((m,c) => Math.max(m, c.id||0), 0) + 1;
 
 // ── GEO HELPERS ───────────────────────────────────────────────────────────────
 function getCoords(c) {
@@ -374,6 +536,7 @@ function applyFilters() {
 
   filteredData = CASES.filter(c => {
     if (s && ![c.lokasi,c.provinsi,c.kabupaten,c.kecamatan,c.gejala,c.sumber].join(' ').toLowerCase().includes(s)) return false;
+    if (filterKategori && c.kategori !== filterKategori) return false;
     if (prov && c.provinsi!==prov) return false;
     if (kab  && c.kabupaten!==kab) return false;
     if (kec  && c.kecamatan!==kec) return false;
@@ -435,12 +598,39 @@ function render() {
   currentView==='card' ? renderCards(out) : renderTable(out);
 }
 
+function setKategori(k) {
+  filterKategori = k;
+  document.querySelectorAll('.cat-tab').forEach(t => t.classList.remove('active'));
+  const idx = ['','keracunan','kecelakaan','sppg','lainnya'].indexOf(k);
+  document.querySelectorAll('.cat-tab')[idx]?.classList.add('active');
+  applyFilters();
+}
+
+function katBadge(k) {
+  const map = {
+    keracunan:  ['badge-new',         '🤢 Keracunan'],
+    kecelakaan: ['badge-kecelakaan',  '🚗 Kecelakaan'],
+    sppg:       ['badge-sppg',        '🏭 SPPG'],
+    lainnya:    ['badge-lainnya',     '📌 Lainnya'],
+  };
+  const [cls, label] = map[k] || map.lainnya;
+  return `<span class="badge ${cls}">${label}</span>`;
+}
+
+function katColor(k) {
+  return { keracunan:'#e3000f', kecelakaan:'#f5a623', sppg:'#4a9eff', lainnya:'#4a4a58' }[k] || '#e3000f';
+}
+
 function renderCards(out) {
   out.innerHTML=`<div class="cases-grid">${filteredData.map(c=>`
-    <div class="case-card ${c.isNew?'new-case':''}" onclick="openNews(${c.id})" title="Klik → cari berita">
+    <div class="case-card kat-${c.kategori||'keracunan'} ${c.isNew?'new-case':''}" onclick="openNews(${c.id})" title="Klik → cari berita">
       <div class="card-top">
         <div class="card-date">${fmtDate(c.tanggal)}</div>
-        <div>${c.isNew?'<span class="badge badge-new">Baru</span>':''}${c.isKLB?'<span class="badge badge-klb">KLB</span>':''}</div>
+        <div style="display:flex;gap:4px;flex-wrap:wrap">
+          ${katBadge(c.kategori||'keracunan')}
+          ${c.isNew?'<span class="badge badge-new">Baru</span>':''}
+          ${c.isKLB?'<span class="badge badge-klb">KLB</span>':''}
+        </div>
       </div>
       <div class="card-lokasi">${c.lokasi}</div>
       <div class="card-geo">
@@ -450,7 +640,7 @@ function renderCards(out) {
       <div class="card-gejala">${c.gejala}</div>
       <div class="card-bottom">
         <div style="display:flex;gap:6px;flex-wrap:wrap">
-          <span class="korban-chip">⚠ ${c.korban.toLocaleString('id-ID')} korban</span>
+          ${c.korban?`<span class="korban-chip" style="border-color:${katColor(c.kategori)};color:${katColor(c.kategori)}">⚠ ${c.korban.toLocaleString('id-ID')} ${c.kategori==='kecelakaan'?'terlibat':'korban'}</span>`:''}
           ${c.rawatInap?`<span class="rawat-chip">🏥 ${c.rawatInap} rawat inap</span>`:''}
         </div>
         <span class="sumber-chip">${c.sumber}</span>
@@ -513,8 +703,10 @@ function updateMap() {
   }).addTo(_map);
   _marks=L.layerGroup();
   d.forEach(c=>{
-    const r=Math.max(7,Math.min(26,Math.sqrt(c.korban)*1.1));
-    const m=L.circleMarker(getCoords(c),{radius:r,fillColor:c.isKLB?'#f5a623':'#e3000f',color:c.isKLB?'#a07000':'#7a0008',weight:1.5,opacity:.9,fillOpacity:.55});
+    const r=Math.max(7,Math.min(26,Math.sqrt(c.korban||10)*1.1));
+    const fillCol = c.isKLB ? '#f5a623' : katColor(c.kategori||'keracunan');
+    const borderCol = { '#e3000f':'#7a0008', '#f5a623':'#a07000', '#4a9eff':'#1a5fa0', '#4a4a58':'#2a2a32' }[fillCol] || '#7a0008';
+    const m=L.circleMarker(getCoords(c),{radius:r,fillColor:fillCol,color:borderCol,weight:1.5,opacity:.9,fillOpacity:.55});
     m.bindPopup(`<b>${c.lokasi}</b>
       <div class="pop-geo">${c.provinsi} › ${c.kabupaten}${c.kecamatan!=='-'?' › '+c.kecamatan:''}</div>
       <div class="pop-korban">⚠ ${c.korban.toLocaleString('id-ID')} korban</div>
@@ -660,6 +852,187 @@ function showToast(type,title,msg) {
   t.innerHTML=`<div class="toast-icon">${icons[type]||'•'}</div><div class="toast-body"><div class="toast-title">${title}</div><div class="toast-msg">${msg}</div></div>`;
   document.getElementById('toastContainer').appendChild(t);
   setTimeout(()=>{t.style.animation='slideIn .3s ease reverse both';setTimeout(()=>t.remove(),350);},5000);
+}
+
+// ── CLOUDFLARE WORKER URL ─────────────────────────────────────────────────
+// Ganti dengan URL Worker kamu setelah deploy ke Cloudflare
+// Contoh: "https://mbg-search-worker.namakamu.workers.dev"
+const WORKER_URL = "https://mbg-search-worker.halodito.workers.dev"; // ← GANTI INI
+
+// ── AI DAERAH SEARCH ──────────────────────────────────────────────────────
+let _aiSearchAbort = null;
+
+async function triggerAISearch() {
+  const input  = document.getElementById('aiSearchInput');
+  const btn    = document.getElementById('btnAISearch');
+  const icon   = document.getElementById('aiSearchIcon');
+  const label  = document.getElementById('aiSearchLabel');
+  const daerah = input.value.trim();
+
+  if (!daerah || daerah.length < 2) {
+    input.focus();
+    input.style.borderColor = 'var(--red)';
+    setTimeout(() => input.style.borderColor = '', 1200);
+    return;
+  }
+
+  // Abort request sebelumnya jika ada
+  if (_aiSearchAbort) _aiSearchAbort.abort();
+  _aiSearchAbort = new AbortController();
+
+  btn.disabled = true;
+  btn.classList.add('loading');
+  icon.textContent = '⟳';
+  label.textContent = 'Mencari…';
+  closeAIResult();
+  showToast('info', '✦ AI Aktif', `Mencari kasus keracunan MBG di "${daerah}"…`);
+
+  try {
+    const res = await fetch(WORKER_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ daerah }),
+      signal: _aiSearchAbort.signal
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+
+    const data = await res.json();
+    renderAIResult(data);
+
+  } catch (err) {
+    if (err.name === 'AbortError') return;
+    console.error(err);
+
+    // Fallback: Worker belum dikonfigurasi → buka Google News langsung
+    if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
+      showToast('info', '⚠ Worker Belum Aktif',
+        'Cloudflare Worker belum di-deploy. Membuka Google News sebagai alternatif…');
+      setTimeout(() => {
+        const q = `keracunan MBG ${daerah}`;
+        window.open(`https://www.google.com/search?q=${encodeURIComponent(q)}&tbm=nws`, '_blank');
+      }, 1000);
+    } else {
+      showToast('error', '⚠ Gagal', err.message);
+    }
+  } finally {
+    btn.disabled = false;
+    btn.classList.remove('loading');
+    icon.textContent = '✦';
+    label.textContent = 'Cari dengan AI';
+  }
+}
+
+function renderAIResult(data) {
+  const panel   = document.getElementById('aiResultPanel');
+  const summary = document.getElementById('aiResultSummary');
+  const cases   = document.getElementById('aiResultCases');
+  const daerahEl = document.getElementById('aiResultDaerah');
+
+  daerahEl.textContent = `— ${data.daerah}`;
+
+  // Ringkasan
+  const totalKorban = (data.total_korban || 0).toLocaleString('id-ID');
+  const jumlahKasus = (data.kasus || []).length;
+  summary.innerHTML = `
+    <strong>${data.daerah}</strong> — AI menemukan
+    <strong style="color:var(--amber)">${jumlahKasus} kasus</strong> dengan total
+    <strong style="color:var(--red)">${totalKorban} korban</strong> dari pencarian internet.<br>
+    <span style="font-style:italic">${data.ringkasan || ''}</span>`;
+
+  // Kasus
+  if (!data.kasus || !data.kasus.length) {
+    cases.innerHTML = `<div class="ai-empty"><div class="icon">🔍</div>
+      <p>Tidak ada kasus yang ditemukan untuk "<strong>${data.daerah}</strong>".<br>
+      Coba nama kabupaten atau kecamatan yang lebih spesifik.</p></div>`;
+  } else {
+    cases.innerHTML = data.kasus.map((c, i) => {
+      const inDataset = CASES.some(e =>
+        e.tanggal?.substring(0,7) === c.tanggal?.substring(0,7) &&
+        e.kabupaten?.toLowerCase() === c.kabupaten?.toLowerCase()
+      );
+      return `
+      <div class="ai-case-item" id="aicase-${i}">
+        <div>
+          <div class="ai-case-lokasi">${c.lokasi || '-'}</div>
+          <div class="ai-case-geo">${c.provinsi || ''} › ${c.kabupaten || ''} ${c.kecamatan && c.kecamatan !== '-' ? '› '+c.kecamatan : ''}</div>
+          <div class="ai-case-info">${c.gejala || '-'}</div>
+          <div class="ai-case-chips">
+            <span class="korban-chip" style="font-size:10px;padding:2px 8px">⚠ ${(c.korban||0).toLocaleString('id-ID')} korban</span>
+            ${c.rawatInap ? `<span class="rawat-chip" style="font-size:10px;padding:2px 8px">🏥 ${c.rawatInap} rawat inap</span>` : ''}
+            ${c.isKLB ? '<span class="badge badge-klb">KLB</span>' : ''}
+            <span class="sumber-chip" style="padding-top:3px">${fmtDate(c.tanggal||new Date().toISOString().split('T')[0])} · ${c.sumber||'-'}</span>
+          </div>
+        </div>
+        <div class="ai-case-actions">
+          ${inDataset
+            ? `<span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--green)">✓ Ada di dataset</span>`
+            : `<button class="btn-add-case" onclick="addAICase(${i})" id="addbtn-${i}">+ Tambah</button>`
+          }
+          <button class="btn-news-case" onclick="window.open('${c.url && c.url !== '-' ? c.url : newsUrlFromObj(c)}','_blank')">🔗 Berita</button>
+        </div>
+      </div>`;
+    }).join('');
+
+    // Simpan kasus AI di memori sementara untuk tombol "Tambah"
+    window._aiCases = data.kasus;
+  }
+
+  panel.classList.add('show');
+  panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function closeAIResult() {
+  document.getElementById('aiResultPanel').classList.remove('show');
+  window._aiCases = null;
+}
+
+function addAICase(idx) {
+  const c = (window._aiCases || [])[idx];
+  if (!c) return;
+
+  const dup = CASES.some(e =>
+    e.tanggal?.substring(0,7) === c.tanggal?.substring(0,7) &&
+    e.kabupaten?.toLowerCase() === c.kabupaten?.toLowerCase()
+  );
+  if (dup) { showToast('info', 'ℹ Sudah Ada', 'Kasus ini sudah ada di dataset.'); return; }
+
+  const newCase = {
+    id: nextId++,
+    tanggal:   c.tanggal   || new Date().toISOString().split('T')[0],
+    kategori:  c.kategori  || 'lainnya',
+    provinsi:  c.provinsi  || '-',
+    kabupaten: c.kabupaten || '-',
+    kecamatan: c.kecamatan || '-',
+    lokasi:    c.lokasi    || '-',
+    korban:    parseInt(c.korban)    || 0,
+    rawatInap: parseInt(c.rawatInap) || 0,
+    gejala:    c.gejala    || '-',
+    sumber:    c.sumber    || 'AI Search',
+    isNew: true, isKLB: !!c.isKLB,
+    lat: null, lng: null
+  };
+
+  CASES.unshift(newCase);
+  rebuildGeo();
+  applyFilters();
+
+  // Tandai tombol sebagai sudah ditambah
+  const btn = document.getElementById(`addbtn-${idx}`);
+  if (btn) {
+    btn.textContent = '✓ Ditambahkan';
+    btn.disabled = true;
+  }
+
+  showToast('success', '✅ Ditambahkan', `${newCase.lokasi} (${newCase.kabupaten}) masuk ke dataset sesi ini.`);
+}
+
+function newsUrlFromObj(c) {
+  const q = `keracunan MBG ${c.lokasi||''} ${c.kabupaten||''} ${(c.tanggal||'').substring(0,7)}`;
+  return `https://www.google.com/search?q=${encodeURIComponent(q)}&tbm=nws`;
 }
 
 // ── INIT ─────────────────────────────────────────────────────────────────────
