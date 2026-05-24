@@ -283,7 +283,6 @@ def write_to_datajs(filepath, new_cases, next_id):
     # Buat string JS untuk kasus-kasus baru
     js_entries = ""
     for i, c in enumerate(new_cases):
-    for i, c in enumerate(new_cases):
         cid       = next_id + i
         kategori  = c.get("kategori", "keracunan").replace('"', '')
         korban    = int(c.get("korban", 0))
